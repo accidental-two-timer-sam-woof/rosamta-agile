@@ -256,18 +256,65 @@ Suggested points: 2
 | E4 New machines and automation | S18 to S22 | 12 |
 | Total | 22 stories | 60 |
 
-## Accepted and rejected
+## Review
 
-Filled in by the Product Owner after review.
+The draft was reviewed twice, then the Product Owner decided.
+
+1. First review: Claude Sonnet 5.5 (project chat) checked every story for ambiguous, missing and AI-invented requirements.
+2. Second review: Claude Opus 5.5 re-checked the first review against `docs/vision.md` and corrected it (see "Where the AI was wrong").
+3. Decision: the AI recommended a decision for each open question; Stanley (PO) approved them. The PO stays accountable for every decision below.
+
+## Accepted and rejected
 
 | Item | Decision | Reason | Approved by |
 | --- | --- | --- | --- |
-|  |  |  |  |
+| S01, S03, S04, S05, S06, S09, S11, S12, S13, S14, S16, S21, S22 | Accepted as drafted | Clear, testable, inside the vision | Stanley |
+| S17 Query which modules feed an output | Accepted | The vision includes the reverse query. The first review wrongly flagged it as invented | Stanley |
+| S08 Profiles by tag | Accepted with change | "Union of matching profiles" is a rule the AI decided; the PO confirmed it. Added how a machine gets its tags | Stanley |
+| S02 Built-in templates | Accepted with change | "Common programs" was vague. Named the v1 templates: bash, zsh, fish, Alacritty | Stanley |
+| S07 Profiles by OS and hostname | Accepted with change | "Outputs enabled for all machines" was undefined. Added a `default` profile that applies everywhere | Stanley |
+| S10 Preflight checks | Accepted with change | Only checked fonts. The vision says missing programs are reported too | Stanley |
+| S15 Clean up old outputs | Accepted with change | Unclear how cleanup is triggered. Decided: it runs as part of apply and shows in preview | Stanley |
+| S18 Initialize a new machine | Accepted with change | Init wrote nothing, against the vision's "one command". Init now registers the folder and applies | Stanley |
+| S19 Never wait for input | Accepted with change | "A decision it cannot make safely" was vague. Replaced with a testable criterion | Stanley |
+| S20 Documented exit codes | Accepted with change | "A code that differs" was vague. Defined codes 0, 1, 2, 3 | Stanley |
+| S23 Back up existing files (new) | Added | Missing from the draft: apply could overwrite a file the user wrote before using rosamta | Stanley |
+
+### Priority
+
+| Priority | Stories | Points |
+| --- | --- | --- |
+| Must | S01, S02, S05, S06, S07, S09, S11, S12, S13, S19, S20, S23 | 35 |
+| Should | S03, S10, S14, S15, S16, S18, S21, S22 | 21 |
+| Could | S04, S08, S17 | 7 |
+| Total | 23 stories | 63 |
+
+Points are the AI's suggestions and are confirmed or changed by the team in planning poker.
+
+## PO revisions
+
+Only the changed criteria are listed. The final text of every story is in its GitHub issue.
+
+- **S02:** built-in templates are bash, zsh and fish (from `shellrc`) and Alacritty (from `theme` and `font`). Each shell output must be valid syntax for that shell.
+- **S07:** criterion 3 now reads: no matching profile means only the `default` profile, which applies to every machine, is used.
+- **S08:** new criterion: tags come from this machine's local settings file, which is not part of the shared config folder.
+- **S10:** new criterion: a missing program (for example tmux) is reported with the outputs that need it, and is not installed.
+- **S15:** cleanup runs during `rosamta apply` and removals are shown by `rosamta preview`.
+- **S18:** `rosamta init <folder>` registers an existing config folder (copied or cloned by the user, since git sync is out of scope), detects the machine, then runs preflight and apply.
+- **S19:** criterion 2 now reads: a run without a terminal never reads from standard input.
+- **S20:** exit codes are 0 (all written or unchanged), 1 (write failed and was rolled back), 2 (finished, some outputs skipped), 3 (invalid configuration, nothing written).
+- **S23 (new):** back up a file that already exists at a target path before taking it over, only when the manifest entry allows it.
 
 ## Where the AI was wrong
 
-(fill in after review)
+- **S18:** the drafted init only recorded the machine and wrote nothing. That contradicts the vision's "one-command initialization".
+- **S02 and S07:** used terms that were never defined ("common programs", "outputs enabled for all machines").
+- **S10:** checked only fonts and missed programs, although the vision mentions both.
+- **Missing story:** nothing covered a file that already exists at a target path. Without S23, apply could overwrite a user's hand-written config. This was the biggest gap.
+- **The reviewer AI was wrong too:** the first review (Sonnet) flagged S17 and S08 as invented. S17 is in the vision, and S08's rule fills a real gap. The second review (Opus) corrected this. Lesson: AI review of AI output still needs a human check against the source documents.
 
 ## Time saved or lost
 
-(fill in after review)
+- Drafting 4 epics and 22 stories with AI: about 5 minutes.
+- Reviewing the draft (two AI review passes plus PO decisions): about 30 minutes.
+- Our estimate for writing the same stories by hand: 2 to 3 hours. AI saved most of the drafting time, but review was still needed to catch the gaps above.

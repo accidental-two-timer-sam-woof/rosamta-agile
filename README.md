@@ -10,3 +10,13 @@ This repository is the **Agile + AI** team of the CS3025301 Software Engineering
 - AI may propose user stories, acceptance criteria and story points. **Only the Product Owner accepts a story**, and the team decides the story points
 - Every use of AI is recorded in [`docs/ai-log/`](docs/ai-log/)
 - Every change goes through a pull request and needs at least one review. See [CONTRIBUTING.md](CONTRIBUTING.md)
+
+## Team
+
+| Member | Role | Responsibilities |
+| --- | --- | --- |
+| Stanley | Product Owner | Product vision, accepting stories, merging PRs, sprint review |
+| Jonas | Scrum Master | Board upkeep, daily records, sprint planning and retrospective |
+| SamWang | Design lead | UML diagrams, slides, demo |
+
+Writing stories and keeping the AI usage log are shared by everyone.

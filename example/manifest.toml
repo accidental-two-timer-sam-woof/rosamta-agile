@@ -1,0 +1,26 @@
+# Every output rosamta manages. `target` is one path, or one path per OS (S05).
+
+[[output]]
+name = "bash"
+template = "bash"
+target = "~/.config/rosamta/shellrc.bash"
+requires = ["bash"]
+
+[[output]]
+name = "zsh"
+template = "zsh"
+target = "~/.config/rosamta/shellrc.zsh"
+requires = ["zsh"]
+
+[[output]]
+name = "fish"
+template = "fish"
+target = "~/.config/fish/conf.d/rosamta.fish"
+requires = ["fish"]
+
+[[output]]
+name = "alacritty"
+template = "alacritty"
+target = { macos = "~/.config/alacritty/alacritty.toml", linux = "~/.config/alacritty/alacritty.toml", windows = "~/AppData/Roaming/alacritty/alacritty.toml" }
+take_over = true
+requires = ["alacritty"]

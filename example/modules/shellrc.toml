@@ -1,0 +1,10 @@
+[env]
+EDITOR = "nvim"
+LANG = "en_US.UTF-8"
+
+[path]
+prepend = ["~/.local/bin", "~/.cargo/bin"]
+
+[alias]
+ll = "ls -la"
+gs = "git status"

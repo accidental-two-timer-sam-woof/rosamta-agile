@@ -1,0 +1,14 @@
+# Which outputs each machine enables (S07, S08).
+
+[default]
+outputs = ["bash", "zsh"]
+
+[[profile]]
+name = "fish-users"
+tags = ["fish"]
+outputs = ["fish"]
+
+[[profile]]
+name = "desktop"
+tags = ["gui"]
+outputs = ["alacritty"]

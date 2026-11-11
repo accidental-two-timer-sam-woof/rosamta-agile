@@ -36,10 +36,15 @@ def default_host_id() -> str:
 
 def load() -> LocalSettings:
     path = settings_file()
-    if not path.is_file():
-        return LocalSettings(default_host_id())
     try:
-        data = tomllib.loads(path.read_text(encoding="utf-8"))
+        text = path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return LocalSettings(default_host_id())
+    except OSError as err:
+        raise RosamtaError(f"cannot read {paths.display(path)} ({err.strerror or err}); make it and "
+                           f"{paths.display(path.parent)} readable, or set XDG_CONFIG_HOME to another folder") from None
+    try:
+        data = tomllib.loads(text)
     except tomllib.TOMLDecodeError as err:
         raise ConfigError(f"{path}: {err}") from None
     saved = data.get("host_id")

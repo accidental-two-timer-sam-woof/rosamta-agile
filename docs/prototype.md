@@ -19,7 +19,7 @@ The `example/` folder is a complete config: modules (`shellrc`, `theme`, `font`)
 | 0 | every output written or unchanged |
 | 1 | something failed; nothing was left half-written |
 | 2 | finished, but some outputs were skipped (hand edits, or a file rosamta may not take over) |
-| 3 | invalid configuration; nothing written |
+| 3 | invalid configuration or command line; nothing written |
 
 Run the tests (one test file per epic, each test named after an acceptance criterion):
 

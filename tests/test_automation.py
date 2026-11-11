@@ -151,6 +151,26 @@ class AutomationTest(RosamtaCase):
                 self.assertEqual(result.returncode, 1)
                 self.assertIn("not a regular file", result.stderr)
 
+    def run_main(self, *args):
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = main(list(args))
+        return code, out.getvalue(), err.getvalue()
+
+    def test_json_usage_error_is_one_document_with_exit_3(self):
+        for args in (["--json", "bogus"], ["--json", "get"]):
+            with self.subTest(args=args):
+                code, out, err = self.run_main(*args)
+                self.assertEqual(code, 3)
+                self.assertEqual(json.loads(out)["error"]["code"], 3)
+                self.assertIn("usage:", err)
+
+    def test_usage_error_without_json_exits_3(self):
+        code, out, err = self.run_main("get")
+        self.assertEqual(code, 3)
+        self.assertEqual(out, "")
+        self.assertIn("required: key", err)
+
     def test_errors_go_to_stderr_results_to_stdout(self):
         self.write("templates/alacritty.tmpl", "x={{ font.weight }}\n")
         code, out, err = self.run_cli("render", "alacritty")

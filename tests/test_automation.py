@@ -171,6 +171,17 @@ class AutomationTest(RosamtaCase):
         self.assertEqual(out, "")
         self.assertIn("required: key", err)
 
+    def test_json_option_is_not_abbreviated(self):
+        code, out, err = self.run_main("--js", "render", "alacritty")
+        self.assertEqual(code, 3)
+        self.assertEqual(out, "")
+        self.assertIn("--js", err)
+
+    def test_json_after_double_dash_is_a_value_not_the_option(self):
+        code, out, _ = self.run_main("--config", str(self.config), "get", "--", "--json")
+        self.assertEqual(code, 3)
+        self.assertEqual(out, "")
+
     def test_errors_go_to_stderr_results_to_stdout(self):
         self.write("templates/alacritty.tmpl", "x={{ font.weight }}\n")
         code, out, err = self.run_cli("render", "alacritty")

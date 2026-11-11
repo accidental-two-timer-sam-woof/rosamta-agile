@@ -141,7 +141,8 @@ class _Parser(argparse.ArgumentParser):
 
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
-    parser = _Parser(prog="rosamta", description="One module, many dotfiles.")
+    # No abbreviations: "--js" must not silently mean "--json" (S21).
+    parser = _Parser(prog="rosamta", description="One module, many dotfiles.", allow_abbrev=False)
     parser.add_argument("--config", type=Path, help="config folder (default: the one saved by init, else the current folder)")
     parser.add_argument("--json", action="store_true", help="print results as one JSON document (S21)")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -156,9 +157,12 @@ def main(argv: list[str] | None = None) -> int:
     init = commands.add_parser("init", help="set up this machine with a config folder, then apply")
     init.add_argument("folder", type=Path)
     init.add_argument("--tag", action="append", default=[], help="add a tag to this machine")
-    out = Reporter("--json" in argv)
+    # Before parsing, guess JSON mode the way the parser will: "--json" as an option, not after "--".
+    options = argv[:argv.index("--")] if "--" in argv else argv
+    out = Reporter("--json" in options)
     try:
         args = parser.parse_args(argv)
+        out.as_json = args.json
         if args.command == "init":
             return out.finish(cmd_init(args.folder, args.tag, out))
         config = _config_folder(args.config)

@@ -1,5 +1,7 @@
 """S07 Profiles by OS and Host ID, S08 Profiles by tag."""
 
+from unittest import mock
+
 from helpers import RosamtaCase
 
 
@@ -35,6 +37,19 @@ outputs = ["alacritty"]
         _, out, _ = self.run_cli("--json", "preview")
         import json
         return {item["output"] for item in json.loads(out)["items"]}
+
+    def test_first_apply_saves_the_host_id(self):
+        with mock.patch("socket.gethostname", return_value="my-laptop.local"):
+            code, out, _ = self.run_cli("apply")
+        self.assertEqual(code, 0)
+        self.assertIn("Host ID is my-laptop", out)
+        with mock.patch("socket.gethostname", return_value="my-laptop-2.local"):
+            self.run_cli("apply")
+        self.assertIn('host_id = "my-laptop"', (self.home / ".config/rosamta/local.toml").read_text())
+
+    def test_preview_does_not_save_the_host_id(self):
+        self.run_cli("preview")
+        self.assertFalse((self.home / ".config/rosamta/local.toml").exists())
 
     def test_host_id_enables_its_outputs(self):
         self.local("work-laptop")

@@ -17,9 +17,26 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      # ping cannot test this: GitHub-hosted runners drop ICMP. Check DNS and HTTP to the apt mirrors instead.
+      # apt falls back between these mirrors, so fail only when none of them works.
+      - name: Check apt mirrors
+        if: runner.os == 'Linux'
+        run: |
+          for url in http://azure.archive.ubuntu.com/ubuntu/ https://archive.ubuntu.com/ubuntu/ https://security.ubuntu.com/ubuntu/; do
+            host=$(echo "$url" | cut -d/ -f3)
+            if ! getent hosts "$host"; then
+              echo "::warning::DNS lookup failed for $host"
+            elif ! curl -fsS -o /dev/null --max-time 10 "$url"; then
+              echo "::warning::Cannot reach $url"
+            else
+              echo "ok: $url"
+              reachable=1
+            fi
+          done
+          [ -n "$reachable" ] || { echo "::error::No apt mirror is reachable"; exit 1; }
       - name: Install shells
         run: |
-          if [ "$RUNNER_OS" = "Linux" ]; then ping -c 4 1.1.1.1 && ping -c 4 google.com && sudo apt-get update && sudo apt-get install -y zsh fish; fi
+          if [ "$RUNNER_OS" = "Linux" ]; then sudo apt-get update && sudo apt-get install -y zsh fish; fi
           if [ "$RUNNER_OS" = "macOS" ]; then brew install fish; fi
       - name: Run tests
         working-directory: tests

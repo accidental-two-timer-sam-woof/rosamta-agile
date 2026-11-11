@@ -19,7 +19,7 @@ jobs:
           python-version: "3.12"
       - name: Install shells
         run: |
-          if [ "$RUNNER_OS" = "Linux" ]; then sudo apt-get update && sudo apt-get install -y zsh fish; fi
+          if [ "$RUNNER_OS" = "Linux" ]; then ping -c 4 1.1.1.1 && ping -c 4 google.com && sudo apt-get update && sudo apt-get install -y zsh fish; fi
           if [ "$RUNNER_OS" = "macOS" ]; then brew install fish; fi
       - name: Run tests
         working-directory: tests

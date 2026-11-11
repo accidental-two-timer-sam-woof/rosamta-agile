@@ -7,6 +7,7 @@
     config_folder = "/Users/me/dotfiles"
 """
 
+import os
 import socket
 import stat
 import tomllib
@@ -38,11 +39,16 @@ def default_host_id() -> str:
 def load() -> LocalSettings:
     path = settings_file()
     try:
-        # Opening a FIFO would block, and rosamta must never hang (S19).
-        if not stat.S_ISREG(path.stat().st_mode):
-            raise RosamtaError(f"{paths.display(path)} is not a regular file; replace it with a file, "
-                               "or set XDG_CONFIG_HOME to another folder")
-        text = path.read_text(encoding="utf-8")
+        # Check the file that was opened, not the path: reading a FIFO would block, and rosamta must never hang (S19).
+        fd = os.open(path, os.O_RDONLY | getattr(os, "O_NONBLOCK", 0) | getattr(os, "O_BINARY", 0))
+        try:
+            if not stat.S_ISREG(os.fstat(fd).st_mode):
+                raise RosamtaError(f"{paths.display(path)} is not a regular file; replace it with a file, "
+                                   "or set XDG_CONFIG_HOME to another folder")
+            with open(fd, encoding="utf-8", closefd=False) as file:
+                text = file.read()
+        finally:
+            os.close(fd)
     except FileNotFoundError:
         return LocalSettings(default_host_id())
     except OSError as err:

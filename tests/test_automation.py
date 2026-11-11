@@ -124,14 +124,20 @@ class AutomationTest(RosamtaCase):
 
     @unittest.skipIf(not hasattr(os, "mkfifo"), "needs named pipes")
     def test_settings_that_are_not_a_file_are_rejected_without_hanging(self):
-        folder = self.home / ".config/rosamta"
-        folder.mkdir(parents=True)
-        os.mkfifo(folder / "local.toml")
-        result = subprocess.run([sys.executable, "-m", "rosamta", "--config", str(self.config), "preview"],
-                                stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=10,
-                                env={"PYTHONPATH": str(SRC), "HOME": str(self.home), "PATH": "/usr/bin:/bin"})
-        self.assertEqual(result.returncode, 1)
-        self.assertIn("not a regular file", result.stderr)
+        settings = self.home / ".config/rosamta/local.toml"
+        settings.parent.mkdir(parents=True)
+        for name, make, remove in (("fifo", os.mkfifo, os.unlink), ("folder", os.mkdir, os.rmdir)):
+            with self.subTest(name):
+                make(settings)
+                try:
+                    result = subprocess.run(
+                        [sys.executable, "-m", "rosamta", "--config", str(self.config), "preview"],
+                        stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=10,
+                        env={"PYTHONPATH": str(SRC), "HOME": str(self.home), "PATH": "/usr/bin:/bin"})
+                finally:
+                    remove(settings)
+                self.assertEqual(result.returncode, 1)
+                self.assertIn("not a regular file", result.stderr)
 
     def test_errors_go_to_stderr_results_to_stdout(self):
         self.write("templates/alacritty.tmpl", "x={{ font.weight }}\n")

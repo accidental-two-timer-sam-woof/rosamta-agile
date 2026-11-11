@@ -11,6 +11,7 @@ import shlex
 from dataclasses import dataclass, replace
 from pathlib import Path
 
+from rosamta import paths
 from rosamta.errors import ConfigError
 from rosamta.module import get_value
 
@@ -110,8 +111,10 @@ BUILT_IN = {
 
 def find_template(config: Path, name: str) -> Template:
     user_file = config / "templates" / f"{name}.tmpl"
-    if user_file.is_file():
-        return Template(name, str(user_file), user_file.read_text(encoding="utf-8"), config)
+    try:
+        return Template(name, str(user_file), paths.read_text(user_file), config)
+    except FileNotFoundError:
+        pass
     if name in BUILT_IN:
         return replace(BUILT_IN[name], config=config)
     raise ConfigError(f"template {name}: not built in, and {user_file} does not exist", user_file)

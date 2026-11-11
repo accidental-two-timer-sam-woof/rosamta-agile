@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from rosamta import local, manifest, paths, profiles
+from rosamta.errors import RosamtaError
 from rosamta.module import load_modules
 from rosamta.state import StateRecord, digest
 from rosamta.templates import find_template
@@ -23,7 +24,10 @@ class Change:
     enabled_by: list[str] = field(default_factory=list)
 
     def old_content(self) -> str:
-        return self.path.read_text(encoding="utf-8") if self.path.is_file() else ""
+        try:
+            return paths.read_bytes(self.path).decode("utf-8", errors="replace")
+        except FileNotFoundError:
+            return ""
 
 
 @dataclass
@@ -63,8 +67,11 @@ def build_plan(config: Path, overwrite: list[str] | None = None) -> Plan:
         content = find_template(config, output.template).render(modules)
         change = Change(output.name, target, WRITE, content=content, requires=output.requires,
                         enabled_by=selection.enabled[output.name])
-        if target.is_file():
-            current = target.read_bytes()
+        try:
+            current = paths.read_bytes(target)
+        except FileNotFoundError:
+            current = None
+        if current is not None:
             if current == content.encode("utf-8"):
                 change.action = UNCHANGED
             elif state.is_drifted(target):
@@ -83,9 +90,14 @@ def build_plan(config: Path, overwrite: list[str] | None = None) -> Plan:
         if path_text in planned_paths:
             continue
         path = Path(path_text)
-        if not path.is_file():
+        try:
+            current = paths.read_bytes(path)
+        except FileNotFoundError:
             continue
-        if digest(path.read_bytes()) == written_hash:
+        except RosamtaError:
+            changes.append(Change("(old output)", path, KEEP, "no longer enabled, but rosamta cannot read it, so it is left alone"))
+            continue
+        if digest(current) == written_hash:
             changes.append(Change("(old output)", path, REMOVE, "no longer enabled"))
         else:
             changes.append(Change("(old output)", path, KEEP, "no longer enabled, but edited by hand"))

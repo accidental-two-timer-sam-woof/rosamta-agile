@@ -26,10 +26,13 @@ class Output:
 
 def load_manifest(config: Path) -> list[Output]:
     path = config / "manifest.toml"
-    if not path.is_file():
-        raise ConfigError(f"{path}: manifest not found", path)
     try:
-        data = tomllib.loads(path.read_text(encoding="utf-8"))
+        text = paths.read_text(path)
+    except FileNotFoundError:
+        raise ConfigError(f"{path}: manifest not found; pass --config <folder>, or run rosamta init <folder>",
+                          path) from None
+    try:
+        data = tomllib.loads(text)
     except tomllib.TOMLDecodeError as err:
         raise ConfigError(f"{path}: {err}", path) from None
     outputs = []
@@ -47,7 +50,8 @@ def load_manifest(config: Path) -> list[Output]:
         elif isinstance(target, dict):
             unknown = set(target) - set(OS_NAMES)
             if unknown:
-                raise ConfigError(f"{path}: output {entry['name']} has unknown OS {', '.join(sorted(unknown))}", path)
+                raise ConfigError(f"{path}: output {entry['name']} has unknown OS {', '.join(sorted(unknown))}; "
+                                  f"use {', '.join(OS_NAMES)}", path)
             targets = dict(target)
         else:
             raise ConfigError(f"{path}: output {entry['name']} target must be a path or a table per OS", path)

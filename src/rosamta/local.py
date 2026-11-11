@@ -51,6 +51,8 @@ def load() -> LocalSettings:
             os.close(fd)
     except FileNotFoundError:
         return LocalSettings(default_host_id())
+    except UnicodeDecodeError:
+        raise ConfigError(f"{paths.display(path)}: not UTF-8 text; save it with UTF-8 encoding", path) from None
     except OSError as err:
         raise RosamtaError(f"cannot read {paths.display(path)} ({err.strerror or err}); make it readable and "
                            f"{paths.display(path.parent)} readable and searchable, "

@@ -1,8 +1,12 @@
 """Where rosamta keeps its own files, and platform helpers."""
 
+import contextlib
 import os
+import stat
 import sys
 from pathlib import Path
+
+from rosamta.errors import ConfigError, RosamtaError
 
 
 def home() -> Path:
@@ -46,3 +50,43 @@ def display(path: Path) -> str:
         return "~/" + str(path.relative_to(home()))
     except ValueError:
         return str(path)
+
+
+def _cannot_read(path: Path, err: OSError) -> RosamtaError:
+    return RosamtaError(f"cannot read {display(path)} ({err.strerror or err}); "
+                        "make it readable and its folder readable and searchable", path)
+
+
+@contextlib.contextmanager
+def _open_regular_file(path: Path):
+    """Open without blocking and check what was opened, so a FIFO can never hang rosamta (S19).
+
+    A missing file raises FileNotFoundError; every other problem becomes a rosamta error naming the file (S22).
+    """
+    try:
+        fd = os.open(path, os.O_RDONLY | getattr(os, "O_NONBLOCK", 0) | getattr(os, "O_BINARY", 0))
+    except FileNotFoundError:
+        raise
+    except OSError as err:
+        raise _cannot_read(path, err) from None
+    try:
+        if not stat.S_ISREG(os.fstat(fd).st_mode):
+            raise RosamtaError(f"{display(path)} is not a regular file; replace it with a file", path)
+        yield fd
+    except OSError as err:
+        raise _cannot_read(path, err) from None
+    finally:
+        os.close(fd)
+
+
+def read_bytes(path: Path) -> bytes:
+    with _open_regular_file(path) as fd, open(fd, "rb", closefd=False) as file:
+        return file.read()
+
+
+def read_text(path: Path) -> str:
+    try:
+        with _open_regular_file(path) as fd, open(fd, encoding="utf-8", closefd=False) as file:
+            return file.read()
+    except UnicodeDecodeError:
+        raise ConfigError(f"{display(path)}: not UTF-8 text; save it with UTF-8 encoding", path) from None

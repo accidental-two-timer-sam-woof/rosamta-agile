@@ -6,7 +6,7 @@ This repository is the **Agile + AI** team of the CS3025301 Software Engineering
 
 ## How we work
 
-- User stories and sprints are managed in GitHub Projects (board link: TBD)
+- User stories and sprints are managed in GitHub Projects ([board](https://github.com/orgs/accidental-two-timer-sam-woof/projects/2))
 - AI may propose user stories, acceptance criteria and story points. **Only the Product Owner accepts a story**, and the team decides the story points
 - Every use of AI is recorded in [`docs/ai-log/`](docs/ai-log/)
 - Every change goes through a pull request and needs at least one review. See [CONTRIBUTING.md](CONTRIBUTING.md)

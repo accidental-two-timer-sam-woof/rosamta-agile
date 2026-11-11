@@ -1,5 +1,7 @@
 """S13 Drift, S14 Overwrite a drifted file, S15 Clean up, S16/S17 Query."""
 
+from pathlib import Path
+
 from helpers import RosamtaCase
 
 
@@ -68,11 +70,11 @@ class QueryTest(RosamtaCase):
     def test_module_lists_outputs_with_their_target_paths(self):
         code, out, _ = self.run_cli("query", "shellrc")
         self.assertEqual(code, 0)
-        self.assertEqual(out.splitlines(), [
-            "bash\t~/.config/rosamta/shellrc.bash",
-            "zsh\t~/.config/rosamta/shellrc.zsh",
-            "fish\t~/.config/fish/conf.d/rosamta.fish",
-        ])
+        self.assertEqual(out.splitlines(), [f"{name}\t~/{Path(relative)}" for name, relative in (
+            ("bash", ".config/rosamta/shellrc.bash"),
+            ("zsh", ".config/rosamta/shellrc.zsh"),
+            ("fish", ".config/fish/conf.d/rosamta.fish"),
+        )])
 
     def test_output_lists_modules(self):
         _, out, _ = self.run_cli("query", "alacritty")

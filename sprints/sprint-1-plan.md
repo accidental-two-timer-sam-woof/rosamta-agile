@@ -21,7 +21,7 @@ Rule: when the votes are within one step of each other, we take the median. When
 | S09 Preview changes (#14) | 3 | 3 | 3 | 3 | 3 | Everyone agreed |
 | S11 Apply outputs (#16) | 3 | 2 | 3 | 3 | 3 | |
 | S12 Roll back a failed apply (#17) | 5 | 5 | 5 | 5 | 5 | Everyone agreed |
-| S13 Detect hand edits (#19) | 3 | 8 | 5 | 3 | 5 | Widest spread, so we discussed it and voted again. Drift needs a record of what rosamta last wrote, which the AI's estimate ignored |
+| S13 Detect hand edits (#19) | 3 | 8 | 5 | 3 | 5 | Widest spread (3 to 8). Our rule says to discuss and re-vote, but we skipped the re-vote and took the median of 8, 5 and 3. Raised in the retro |
 | S19 Never wait for input (#25) | 2 | 1 | 1 | 2 | 1 | Smaller than the AI thought |
 | S20 Documented exit codes (#26) | 2 | 1 | 1 | 2 | 1 | Smaller than the AI thought |
 | S23 Back up existing files (#18) | 3 | 2 | 2 | 3 | 2 | |
@@ -29,7 +29,7 @@ Rule: when the votes are within one step of each other, we take the median. When
 ### What we learned
 
 - The team rated simple, rule-like stories (S19, S20, S05, S01) lower than the AI did.
-- The team rated S06 and S13 higher. Both have hidden work the AI's estimate missed: two separate checks for S06, and storing what was last written for S13.
+- The team rated S06 and S13 higher than the AI did. We did not record why, so we will ask the voters in the retro.
 - The AI gave almost every story 2 or 3. Its estimates were safe but did not separate easy stories from hard ones.
 
 ## Sprint backlog

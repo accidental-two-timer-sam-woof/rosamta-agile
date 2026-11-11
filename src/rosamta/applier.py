@@ -52,7 +52,7 @@ def apply(plan: Plan) -> list[str]:
                 path.unlink(missing_ok=True)
             else:
                 _write_atomic(path, before)
-        raise ApplyFailed(f"{err}; rolled back {len(journal)} file(s)") from None
+        raise ApplyFailed(f"{err}; rolled back {len(journal)} file(s)", file=change.path) from None
 
     for change in plan.changes:
         if change.action in (WRITE, UNCHANGED):

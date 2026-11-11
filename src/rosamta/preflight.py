@@ -14,12 +14,15 @@ def _writable(path: Path) -> bool:
     return folder.is_dir() and os.access(folder, os.W_OK)
 
 
-def check(plan: Plan) -> tuple[list[str], list[str]]:
-    """Return (problems, warnings). Any problem stops apply before it writes."""
+def check(plan: Plan) -> tuple[list[tuple[Path, str]], list[str]]:
+    """Return (problems, warnings). Any problem stops apply before it writes.
+
+    Each problem is (path of the output that cannot be written, message).
+    """
     problems, warnings = [], []
     for change in plan.changes:
         if change.action in (WRITE, REMOVE) and not _writable(change.path):
-            problems.append(f"{change.output}: cannot write to {change.path.parent}")
+            problems.append((change.path, f"{change.output}: cannot write to {change.path.parent}"))
         for program in change.requires:
             if shutil.which(program) is None:
                 warnings.append(f"{change.output}: needs {program}, which is not installed (rosamta will not install it)")

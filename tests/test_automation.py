@@ -96,13 +96,25 @@ class AutomationTest(RosamtaCase):
         self.assertTrue(all("path" in i and "action" in i for i in data["items"]))
         self.assertNotIn("\x1b[", out)
 
-    def test_json_error_has_code_and_message(self):
+    def test_json_error_has_code_file_and_message(self):
         self.write("modules/theme.toml", "broken = \n")
         code, out, _ = self.run_cli("--json", "apply")
         data = json.loads(out)
         self.assertEqual(code, 3)
         self.assertEqual(data["error"]["code"], 3)
+        self.assertEqual(data["error"]["file"], str(self.config / "modules" / "theme.toml"))
         self.assertIn("theme.toml", data["error"]["message"])
+
+    def test_json_error_names_the_file_to_fix(self):
+        # A built-in template cannot be edited, so the error names the module; a user's template names itself.
+        self.edit("modules/font.toml", "size = 13\n", "")
+        _, out, _ = self.run_cli("--json", "render", "alacritty")
+        self.assertEqual(json.loads(out)["error"]["file"], str(self.config / "modules" / "font.toml"))
+        self.write("templates/alacritty.tmpl", "x={{ font.weight }}\n")
+        _, out, _ = self.run_cli("--json", "render", "alacritty")
+        self.assertEqual(json.loads(out)["error"]["file"], str(self.config / "templates" / "alacritty.tmpl"))
+        _, out, _ = self.run_cli("--json", "query", "no-such-name")
+        self.assertIsNone(json.loads(out)["error"]["file"])
 
     @unittest.skipIf(os.name == "nt" or os.geteuid() == 0, "needs POSIX permissions and a non-root user")
     def test_unreadable_settings_is_a_json_error(self):

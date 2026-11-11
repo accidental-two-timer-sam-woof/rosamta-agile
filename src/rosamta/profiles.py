@@ -43,14 +43,14 @@ def select_outputs(config: Path, machine: Machine, all_outputs: list[str]) -> Se
     try:
         data = tomllib.loads(path.read_text(encoding="utf-8"))
     except tomllib.TOMLDecodeError as err:
-        raise ConfigError(f"{path}: {err}") from None
+        raise ConfigError(f"{path}: {err}", path) from None
 
     enabled: dict[str, list[str]] = {}
 
     def enable(names, profile):
         for name in names:
             if name not in all_outputs:
-                raise ConfigError(f"{path}: profile {profile} enables unknown output {name}")
+                raise ConfigError(f"{path}: profile {profile} enables unknown output {name}", path)
             enabled.setdefault(name, []).append(profile)
 
     enable(data.get("default", {}).get("outputs", []), "default")

@@ -8,7 +8,7 @@ Text templates use `{{ module.key }}` placeholders.
 
 import re
 import shlex
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 from rosamta.errors import ConfigError
@@ -66,16 +66,21 @@ class Template:
     name: str
     source: str           # "built-in" or the path of the user's file
     text: str | None      # text template, or None for code templates (shells)
+    config: Path | None = None  # config folder, so errors can name a module file (S21)
 
     def modules_used(self) -> list[str]:
         if self.text is None:
             return ["shellrc"]
         return sorted({key.split(".")[0] for key in PLACEHOLDER.findall(self.text)})
 
+    def _module_file(self, module: str) -> Path | None:
+        return self.config / "modules" / f"{module}.toml" if self.config else None
+
     def render(self, modules: dict[str, dict]) -> str:
         if self.text is None:
             if "shellrc" not in modules:
-                raise ConfigError(f"template {self.name}: missing module shellrc (add modules/shellrc.toml)")
+                raise ConfigError(f"template {self.name}: missing module shellrc (add modules/shellrc.toml)",
+                                  self._module_file("shellrc"))
             return _shell(self.name, modules["shellrc"])
         out = []
         for number, line in enumerate(self.text.splitlines(keepends=True), start=1):
@@ -87,7 +92,9 @@ class Template:
                     module = key.split(".")[0]
                     raise ConfigError(
                         f"template {self.name} ({self.source}, line {number}): missing key {key}; "
-                        f"set it in modules/{module}.toml"
+                        f"set it in modules/{module}.toml",
+                        # A user's template is the file to fix; a built-in one cannot be edited, so name the module.
+                        self.source if self.source != "built-in" else self._module_file(module),
                     ) from None
             out.append(PLACEHOLDER.sub(fill, line))
         return "".join(out)
@@ -104,7 +111,7 @@ BUILT_IN = {
 def find_template(config: Path, name: str) -> Template:
     user_file = config / "templates" / f"{name}.tmpl"
     if user_file.is_file():
-        return Template(name, str(user_file), user_file.read_text(encoding="utf-8"))
+        return Template(name, str(user_file), user_file.read_text(encoding="utf-8"), config)
     if name in BUILT_IN:
-        return BUILT_IN[name]
-    raise ConfigError(f"template {name}: not built in, and {user_file} does not exist")
+        return replace(BUILT_IN[name], config=config)
+    raise ConfigError(f"template {name}: not built in, and {user_file} does not exist", user_file)

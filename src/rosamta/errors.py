@@ -1,7 +1,7 @@
 """Errors and exit codes (S20).
 
 0  every output was written or is unchanged
-1  something failed; nothing was left half-written
+1  a write failed and was rolled back, or preflight failed and nothing was written
 2  finished, but some outputs were skipped (drift, or an existing file rosamta may not take over)
 3  invalid configuration; nothing was written
 """

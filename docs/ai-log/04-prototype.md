@@ -17,7 +17,7 @@ The code in `src/rosamta`, the tests in `tests/` and the CI workflow, as committ
 
 | Decision | Why it matters | PO decision |
 | --- | --- | --- |
-| A failed preflight exits with code 1 | S20 did not define this (the open question from the activity diagram) | (fill in) |
+| A failed preflight exits with code 1 | S20 did not define this (the open question from the activity diagram) | Accepted by Stanley (2026-11-11). S20 (#26) and the activity diagram updated |
 | Module, manifest and profile files are TOML | No story fixed a format; TOML needs no extra library | (fill in) |
 | The Host ID defaults to the hostname the first time, then stays fixed in local settings | Follows the S07 change request | (fill in) |
 | An old output kept because of hand edits also gives exit code 2 | S15 and S20 did not say | (fill in) |

@@ -6,6 +6,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+from unittest import mock
 
 from helpers import RosamtaCase
 from rosamta.cli import main
@@ -34,6 +35,14 @@ class InitTest(RosamtaCase):
         code, _, _ = self.init()
         self.assertEqual(code, 0)
         self.assertIn('"gui"', (self.home / ".config/rosamta/local.toml").read_text())
+
+    def test_host_id_stays_fixed_when_hostname_changes(self):
+        with mock.patch("socket.gethostname", return_value="my-laptop.local"):
+            self.init()
+        with mock.patch("socket.gethostname", return_value="my-laptop-2.local"):
+            code, _, _ = self.init()
+        self.assertEqual(code, 0)
+        self.assertIn('host_id = "my-laptop"', (self.home / ".config/rosamta/local.toml").read_text())
 
     def test_init_rejects_a_folder_without_manifest(self):
         (self.config / "manifest.toml").unlink()

@@ -65,11 +65,14 @@ class CleanupTest(RosamtaCase):
 
 
 class QueryTest(RosamtaCase):
-    def test_module_lists_outputs(self):
+    def test_module_lists_outputs_with_their_target_paths(self):
         code, out, _ = self.run_cli("query", "shellrc")
         self.assertEqual(code, 0)
-        for shell in ("bash", "zsh", "fish"):
-            self.assertIn(shell, out)
+        self.assertEqual(out.splitlines(), [
+            "bash\t~/.config/rosamta/shellrc.bash",
+            "zsh\t~/.config/rosamta/shellrc.zsh",
+            "fish\t~/.config/fish/conf.d/rosamta.fish",
+        ])
 
     def test_output_lists_modules(self):
         _, out, _ = self.run_cli("query", "alacritty")

@@ -11,7 +11,7 @@ import sys
 from pathlib import Path
 
 from rosamta import applier, local, manifest, paths, preflight
-from rosamta.errors import EXIT_FAILED, EXIT_OK, EXIT_PARTIAL, ConfigError, RosamtaError
+from rosamta.errors import EXIT_FAILED, EXIT_OK, EXIT_PARTIAL, ConfigError, RosamtaError, UsageError
 from rosamta.module import get_value, load_modules
 from rosamta.planner import KEEP, REMOVE, SKIP, UNCHANGED, WRITE, build_plan
 from rosamta.query import query
@@ -131,8 +131,17 @@ def cmd_init(folder: Path, tags: list[str], out: Reporter) -> int:
     return cmd_apply(folder, out, [])
 
 
+class _Parser(argparse.ArgumentParser):
+    """Turns a wrong command line into a rosamta error, so --json still prints one document (S21)."""
+
+    def error(self, message: str):
+        self.print_usage(sys.stderr)
+        raise UsageError(f"{self.prog}: {message}")
+
+
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="rosamta", description="One module, many dotfiles.")
+    argv = sys.argv[1:] if argv is None else argv
+    parser = _Parser(prog="rosamta", description="One module, many dotfiles.")
     parser.add_argument("--config", type=Path, help="config folder (default: the one saved by init, else the current folder)")
     parser.add_argument("--json", action="store_true", help="print results as one JSON document (S21)")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -147,10 +156,9 @@ def main(argv: list[str] | None = None) -> int:
     init = commands.add_parser("init", help="set up this machine with a config folder, then apply")
     init.add_argument("folder", type=Path)
     init.add_argument("--tag", action="append", default=[], help="add a tag to this machine")
-    args = parser.parse_args(argv)
-
-    out = Reporter(args.json)
+    out = Reporter("--json" in argv)
     try:
+        args = parser.parse_args(argv)
         if args.command == "init":
             return out.finish(cmd_init(args.folder, args.tag, out))
         config = _config_folder(args.config)

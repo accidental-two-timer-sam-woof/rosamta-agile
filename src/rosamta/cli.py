@@ -103,6 +103,11 @@ def cmd_apply(config: Path, out: Reporter, overwrite: list[str]) -> int:
         out.data["error"] = {"code": EXIT_FAILED, "message": "preflight failed; nothing was written",
                              "problems": problems}
         return EXIT_FAILED
+    if not local.settings_file().is_file():
+        # The first write fixes the Host ID, so a later hostname change cannot pick other profiles (S07).
+        settings = local.load()
+        local.save(settings)
+        out.line(f"this machine's Host ID is {settings.host_id} (saved in {paths.display(local.settings_file())})")
     for note in applier.apply(plan):
         out.line(note)
     out.data["items"] = [_item(c) for c in plan.changes]

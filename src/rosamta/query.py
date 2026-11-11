@@ -22,4 +22,5 @@ def query(config: Path, name: str) -> list[str]:
     for output in outputs:
         if output.name == name:
             return find_template(config, output.template).modules_used()
-    raise ConfigError(f"{name}: not a module or an output")
+    raise ConfigError(f"{name}: not a module or an output; modules: {', '.join(sorted(modules)) or 'none'}; "
+                      f"outputs: {', '.join(o.name for o in outputs) or 'none'}")

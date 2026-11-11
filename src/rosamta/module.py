@@ -3,17 +3,18 @@
 import tomllib
 from pathlib import Path
 
+from rosamta import paths
 from rosamta.errors import ConfigError
 
 
 def load_modules(config: Path) -> dict[str, dict]:
     folder = config / "modules"
     if not folder.is_dir():
-        raise ConfigError(f"{folder}: modules folder not found", folder)
+        raise ConfigError(f"{folder}: modules folder not found; create it with one .toml file per module", folder)
     modules = {}
     for path in sorted(folder.glob("*.toml")):
         try:
-            modules[path.stem] = tomllib.loads(path.read_text(encoding="utf-8"))
+            modules[path.stem] = tomllib.loads(paths.read_text(path))
         except tomllib.TOMLDecodeError as err:
             raise ConfigError(f"{path}: {err}", path) from None
     return modules

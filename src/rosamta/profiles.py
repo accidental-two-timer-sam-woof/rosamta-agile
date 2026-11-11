@@ -20,6 +20,7 @@ import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from rosamta import paths
 from rosamta.errors import ConfigError
 
 
@@ -38,10 +39,12 @@ class Selection:
 
 def select_outputs(config: Path, machine: Machine, all_outputs: list[str]) -> Selection:
     path = config / "profiles.toml"
-    if not path.is_file():
+    try:
+        text = paths.read_text(path)
+    except FileNotFoundError:
         return Selection({name: ["default"] for name in all_outputs}, [])
     try:
-        data = tomllib.loads(path.read_text(encoding="utf-8"))
+        data = tomllib.loads(text)
     except tomllib.TOMLDecodeError as err:
         raise ConfigError(f"{path}: {err}", path) from None
 
@@ -50,7 +53,8 @@ def select_outputs(config: Path, machine: Machine, all_outputs: list[str]) -> Se
     def enable(names, profile):
         for name in names:
             if name not in all_outputs:
-                raise ConfigError(f"{path}: profile {profile} enables unknown output {name}", path)
+                raise ConfigError(f"{path}: profile {profile} enables unknown output {name}; "
+                                  "add it to manifest.toml or remove it from the profile", path)
             enabled.setdefault(name, []).append(profile)
 
     enable(data.get("default", {}).get("outputs", []), "default")

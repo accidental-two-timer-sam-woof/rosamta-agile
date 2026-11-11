@@ -4,13 +4,14 @@ import contextlib
 import io
 import json
 import os
+import shutil
 import subprocess
 import sys
 import unittest
 from pathlib import Path
 from unittest import mock
 
-from helpers import RosamtaCase
+from helpers import EXAMPLE, RosamtaCase
 from rosamta.cli import main
 
 SRC = Path(__file__).resolve().parent.parent / "src"
@@ -187,3 +188,170 @@ class AutomationTest(RosamtaCase):
         code, out, err = self.run_cli("render", "alacritty")
         self.assertEqual(out, "")
         self.assertIn("modules/font.toml", err)
+
+
+POSIX_USER = unittest.skipIf(os.name == "nt" or os.geteuid() == 0, "needs POSIX permissions and a non-root user")
+
+
+class ActionableErrorTest(RosamtaCase):
+    """S22: every error says what failed, where, and what to change, with no traceback."""
+
+    def file_in(self, place, relative):
+        return (self.config if place == "config" else self.home) / relative
+
+    @POSIX_USER
+    def test_unreadable_files_name_the_file(self):
+        for place, relative in (("config", "manifest.toml"), ("config", "modules/theme.toml"),
+                                ("config", "profiles.toml"), ("config", "templates/bash.tmpl"),
+                                ("home", ".local/state/rosamta/state.json"), ("home", ".config/rosamta/shellrc.bash")):
+            with self.subTest(relative):
+                path = self.file_in(place, relative)
+                if not path.exists():
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_text("{}\n" if path.suffix == ".json" else "x\n")
+                path.chmod(0)
+                try:
+                    code, _, err = self.run_cli("preview")
+                finally:
+                    path.chmod(0o600)
+                self.assertEqual(code, 1)
+                shown = f"~/{Path(relative)}" if place == "home" else str(path)
+                self.assertIn(f"cannot read {shown}", err)
+                self.assertIn("readable", err)
+
+    def test_text_that_is_not_utf8_is_a_config_error(self):
+        for place, relative in (("config", "manifest.toml"), ("config", "modules/theme.toml"),
+                                ("home", ".config/rosamta/local.toml")):
+            with self.subTest(relative):
+                path = self.file_in(place, relative)
+                path.parent.mkdir(parents=True, exist_ok=True)
+                before = path.read_bytes() if path.exists() else None
+                path.write_bytes(b"\xff")
+                try:
+                    code, _, err = self.run_cli("preview")
+                finally:
+                    if before is None:
+                        path.unlink()
+                    else:
+                        path.write_bytes(before)
+                self.assertEqual(code, 3)
+                self.assertIn("not UTF-8 text; save it with UTF-8 encoding", err)
+
+    def test_damaged_state_record_says_how_to_recover(self):
+        state = self.home / ".local/state/rosamta/state.json"
+        state.parent.mkdir(parents=True)
+        for data in (b"{nope", b"[1]", b'{"written": 1}', b"\xff"):
+            with self.subTest(data):
+                state.write_bytes(data)
+                code, _, err = self.run_cli("preview")
+                self.assertEqual(code, 1)
+                self.assertIn("state.json is damaged; delete it to start over", err)
+
+    @POSIX_USER
+    def test_unsearchable_templates_folder_is_an_error_not_the_built_in(self):
+        self.write("templates/bash.tmpl", "MY BASH\n")
+        folder = self.config / "templates"
+        folder.chmod(0o600)
+        self.addCleanup(folder.chmod, 0o700)
+        code, out, err = self.run_cli("render", "bash")
+        self.assertEqual(code, 1)
+        self.assertEqual(out, "")
+        self.assertIn(f"cannot read {folder / 'bash.tmpl'}", err)
+
+    @unittest.skipIf(not hasattr(os, "mkfifo"), "needs named pipes")
+    def test_config_files_that_are_not_regular_files_do_not_hang(self):
+        for relative in ("manifest.toml", "templates/bash.tmpl"):
+            with self.subTest(relative):
+                path = self.config / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                before = path.read_bytes() if path.exists() else None
+                path.unlink(missing_ok=True)
+                os.mkfifo(path)
+                try:
+                    result = subprocess.run(
+                        [sys.executable, "-m", "rosamta", "--config", str(self.config), "preview"],
+                        stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=10,
+                        env={"PYTHONPATH": str(SRC), "HOME": str(self.home), "PATH": "/usr/bin:/bin"})
+                finally:
+                    path.unlink()
+                    if before is not None:
+                        path.write_bytes(before)
+                self.assertEqual(result.returncode, 1)
+                self.assertIn(f"{path} is not a regular file", result.stderr)
+
+    def test_preview_shows_a_diff_for_a_file_that_is_not_utf8(self):
+        self.set_tags("gui")
+        existing = self.target(".config/alacritty/alacritty.toml")
+        existing.parent.mkdir(parents=True)
+        existing.write_bytes(b"\xff\xfe old\n")
+        code, out, _ = self.run_cli("preview")
+        self.assertEqual(code, 0)
+        self.assertIn("alacritty.toml (on disk)", out)
+
+    @POSIX_USER
+    def test_existing_state_record_in_a_read_only_folder_is_still_updated(self):
+        self.assertEqual(self.run_cli("apply")[0], 0)
+        folder = self.home / ".local/state/rosamta"
+        folder.chmod(0o500)
+        self.addCleanup(folder.chmod, 0o700)
+        self.edit("modules/shellrc.toml", "[env]", '[env]\nROSAMTA_TEST = "1"')
+        code, out, err = self.run_cli("apply")
+        self.assertEqual(code, 0, err)
+        self.assertIn("written    bash", out)
+
+    @POSIX_USER
+    def test_read_only_state_record_stops_apply_before_writing(self):
+        state = self.home / ".local/state/rosamta/state.json"
+        state.parent.mkdir(parents=True)
+        state.write_text("{}\n")
+        state.chmod(0o400)
+        self.addCleanup(state.chmod, 0o600)
+        code, _, err = self.run_cli("apply")
+        self.assertEqual(code, 1)
+        self.assertIn(f"state record: cannot write to {state}", err)
+        self.assertFalse(self.target(".config/rosamta/shellrc.bash").exists())
+
+    @POSIX_USER
+    def test_unreadable_old_output_is_left_alone(self):
+        self.run_cli("apply")
+        old = self.target(".config/rosamta/shellrc.zsh")
+        self.edit("profiles.toml", '"bash", "zsh"', '"bash"')
+        old.chmod(0)
+        self.addCleanup(old.chmod, 0o600)
+        code, out, _ = self.run_cli("apply")
+        self.assertEqual(code, 2)
+        self.assertIn("rosamta cannot read it, so it is left alone", out)
+        self.assertTrue(old.exists())
+
+    @POSIX_USER
+    def test_unwritable_state_folder_stops_apply_before_writing(self):
+        folder = self.home / ".local/state/rosamta"
+        folder.mkdir(parents=True)
+        folder.chmod(0o500)
+        self.addCleanup(folder.chmod, 0o700)
+        code, _, err = self.run_cli("apply")
+        self.assertEqual(code, 1)
+        self.assertIn(f"state record: cannot write to {folder}", err)
+        self.assertFalse(self.target(".config/rosamta/shellrc.bash").exists())
+
+    def test_config_errors_say_what_to_change(self):
+        cases = (
+            ("unknown OS", lambda: self.edit("manifest.toml", "macos =", "mac ="), ("preview",),
+             "unknown OS mac; use macos, linux, windows"),
+            ("unknown output", lambda: self.edit("profiles.toml", '"zsh"]', '"zshh"]'), ("preview",),
+             "add it to manifest.toml or remove it from the profile"),
+            ("unknown query name", lambda: None, ("query", "nope"),
+             "modules: font, shellrc, theme; outputs: bash, zsh, fish, alacritty"),
+            ("no modules folder", lambda: shutil.rmtree(self.config / "modules"), ("preview",),
+             "create it with one .toml file per module"),
+            ("no manifest", lambda: (self.config / "manifest.toml").unlink(), ("preview",),
+             "pass --config <folder>, or run rosamta init <folder>"),
+        )
+        for name, change, args, hint in cases:
+            with self.subTest(name):
+                shutil.rmtree(self.config)
+                shutil.copytree(EXAMPLE, self.config)
+                change()
+                code, _, err = self.run_cli(*args)
+                self.assertEqual(code, 3)
+                self.assertIn(hint, err)

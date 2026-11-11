@@ -8,6 +8,7 @@
 """
 
 import socket
+import stat
 import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -37,12 +38,17 @@ def default_host_id() -> str:
 def load() -> LocalSettings:
     path = settings_file()
     try:
+        # Opening a FIFO would block, and rosamta must never hang (S19).
+        if not stat.S_ISREG(path.stat().st_mode):
+            raise RosamtaError(f"{paths.display(path)} is not a regular file; replace it with a file, "
+                               "or set XDG_CONFIG_HOME to another folder")
         text = path.read_text(encoding="utf-8")
     except FileNotFoundError:
         return LocalSettings(default_host_id())
     except OSError as err:
-        raise RosamtaError(f"cannot read {paths.display(path)} ({err.strerror or err}); make it and "
-                           f"{paths.display(path.parent)} readable, or set XDG_CONFIG_HOME to another folder") from None
+        raise RosamtaError(f"cannot read {paths.display(path)} ({err.strerror or err}); make it readable and "
+                           f"{paths.display(path.parent)} readable and searchable, "
+                           "or set XDG_CONFIG_HOME to another folder") from None
     try:
         data = tomllib.loads(text)
     except tomllib.TOMLDecodeError as err:

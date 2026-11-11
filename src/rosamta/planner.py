@@ -30,6 +30,7 @@ class Change:
 class Plan:
     changes: list[Change]
     messages: list[str]
+    settings: local.LocalSettings
 
     @property
     def skipped(self) -> bool:
@@ -88,4 +89,4 @@ def build_plan(config: Path, overwrite: list[str] | None = None) -> Plan:
             changes.append(Change("(old output)", path, REMOVE, "no longer enabled"))
         else:
             changes.append(Change("(old output)", path, KEEP, "no longer enabled, but edited by hand"))
-    return Plan(changes, messages)
+    return Plan(changes, messages, settings)

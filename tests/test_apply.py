@@ -47,6 +47,8 @@ class ApplyTest(RosamtaCase):
         code, _, err = self.run_cli("apply")
         self.assertEqual(code, 1)
         self.assertIn("cannot write", err)
+        self.assertIn(str(blocked), err)
+        self.assertFalse(self.target(".local/state/rosamta").exists())
 
     def test_missing_program_is_a_warning_not_an_install(self):
         self.write("manifest.toml", '[[output]]\nname = "bash"\ntemplate = "bash"\n'
@@ -54,7 +56,8 @@ class ApplyTest(RosamtaCase):
         self.write("profiles.toml", '[default]\noutputs = ["bash"]\n')
         code, _, err = self.run_cli("apply")
         self.assertEqual(code, 0)
-        self.assertIn("needs definitely-not-installed-tool", err)
+        self.assertIn("bash: needs definitely-not-installed-tool", err)
+        self.assertTrue(self.target("x.bash").exists())
 
 
 class RollbackTest(RosamtaCase):

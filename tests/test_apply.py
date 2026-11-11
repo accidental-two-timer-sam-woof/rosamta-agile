@@ -38,8 +38,9 @@ class ApplyTest(RosamtaCase):
         self.assertIn("unchanged", out)
 
     def test_preflight_stops_before_writing(self):
-        blocked = self.target(".config")
-        blocked.mkdir()
+        self.set_tags("gui")
+        blocked = self.target(".config/alacritty")
+        blocked.mkdir(parents=True)
         blocked.chmod(0o500)
         self.addCleanup(blocked.chmod, 0o700)
         if os.access(blocked, os.W_OK):
@@ -48,6 +49,7 @@ class ApplyTest(RosamtaCase):
         self.assertEqual(code, 1)
         self.assertIn("cannot write", err)
         self.assertIn(str(blocked), err)
+        self.assertFalse(self.target(".config/rosamta/shellrc.bash").exists())
         self.assertFalse(self.target(".local/state/rosamta").exists())
 
     def test_missing_program_is_a_warning_not_an_install(self):

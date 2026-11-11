@@ -3,6 +3,7 @@
 import contextlib
 import io
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -43,6 +44,20 @@ class InitTest(RosamtaCase):
             code, _, _ = self.init()
         self.assertEqual(code, 0)
         self.assertIn('host_id = "my-laptop"', (self.home / ".config/rosamta/local.toml").read_text())
+
+    def test_init_stops_when_preflight_finds_a_problem(self):
+        blocked = self.target(".config/alacritty")
+        blocked.mkdir(parents=True)
+        blocked.chmod(0o500)
+        self.addCleanup(blocked.chmod, 0o700)
+        if os.access(blocked, os.W_OK):
+            self.skipTest("running as a user who can write anywhere")
+        code, _, err = self.init("--tag", "gui")
+        self.assertEqual(code, 1)
+        self.assertIn("cannot write", err)
+        self.assertIn(str(blocked), err)
+        self.assertFalse(self.target(".config/rosamta/shellrc.bash").exists())
+        self.assertFalse(self.target(".local/state/rosamta").exists())
 
     def test_init_rejects_a_folder_without_manifest(self):
         (self.config / "manifest.toml").unlink()

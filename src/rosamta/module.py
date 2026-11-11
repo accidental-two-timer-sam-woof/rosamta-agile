@@ -9,13 +9,13 @@ from rosamta.errors import ConfigError
 def load_modules(config: Path) -> dict[str, dict]:
     folder = config / "modules"
     if not folder.is_dir():
-        raise ConfigError(f"{folder}: modules folder not found")
+        raise ConfigError(f"{folder}: modules folder not found", folder)
     modules = {}
     for path in sorted(folder.glob("*.toml")):
         try:
             modules[path.stem] = tomllib.loads(path.read_text(encoding="utf-8"))
         except tomllib.TOMLDecodeError as err:
-            raise ConfigError(f"{path}: {err}") from None
+            raise ConfigError(f"{path}: {err}", path) from None
     return modules
 
 

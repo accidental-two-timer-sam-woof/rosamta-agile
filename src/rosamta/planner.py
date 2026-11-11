@@ -43,7 +43,7 @@ def build_plan(config: Path, overwrite: list[str] | None = None) -> Plan:
     machine = profiles.Machine(paths.current_os(), settings.host_id, settings.tags)
     modules = load_modules(config)
     outputs = manifest.load_manifest(config)
-    manifest.validate(outputs, machine.os)
+    manifest.validate(outputs, machine.os, config / "manifest.toml")
     selection = profiles.select_outputs(config, machine, [o.name for o in outputs])
     state = StateRecord.load()
 

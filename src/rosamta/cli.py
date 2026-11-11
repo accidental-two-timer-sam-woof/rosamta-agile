@@ -98,10 +98,11 @@ def cmd_apply(config: Path, out: Reporter, overwrite: list[str]) -> int:
     for warning in warnings:
         out.warn(warning)
     if problems:
-        for problem in problems:
+        for _, problem in problems:
             print(f"error: {problem}", file=sys.stderr)
-        out.data["error"] = {"code": EXIT_FAILED, "message": "preflight failed; nothing was written",
-                             "problems": problems}
+        out.data["error"] = {"code": EXIT_FAILED, "file": str(problems[0][0]),
+                             "message": "preflight failed; nothing was written",
+                             "problems": [problem for _, problem in problems]}
         return EXIT_FAILED
     if not plan.settings.host_id_saved:
         # Save the Host ID the plan used, so a later hostname change cannot pick other profiles (S07).
@@ -119,7 +120,7 @@ def cmd_apply(config: Path, out: Reporter, overwrite: list[str]) -> int:
 def cmd_init(folder: Path, tags: list[str], out: Reporter) -> int:
     folder = folder.resolve()
     if not (folder / "manifest.toml").is_file():
-        raise ConfigError(f"{folder}: not a rosamta config folder (no manifest.toml)")
+        raise ConfigError(f"{folder}: not a rosamta config folder (no manifest.toml)", folder / "manifest.toml")
     settings = local.load()
     first_time = not settings.host_id_saved
     settings.config_folder = str(folder)
@@ -157,12 +158,13 @@ def main(argv: list[str] | None = None) -> int:
             try:
                 out.line(str(get_value(load_modules(config), args.key)))
             except KeyError as err:
-                raise ConfigError(f"key not found: {err.args[0]}") from None
+                raise ConfigError(f"key not found: {err.args[0]}",
+                                  config / "modules" / f"{args.key.split('.')[0]}.toml") from None
             return out.finish(EXIT_OK)
         if args.command == "render":
             outputs = {o.name: o for o in manifest.load_manifest(config)}
             if args.output not in outputs:
-                raise ConfigError(f"output {args.output}: not in the manifest")
+                raise ConfigError(f"output {args.output}: not in the manifest", config / "manifest.toml")
             text = find_template(config, outputs[args.output].template).render(load_modules(config))
             if args.json:
                 out.data["content"] = text
@@ -178,7 +180,7 @@ def main(argv: list[str] | None = None) -> int:
         return out.finish(cmd_apply(config, out, args.overwrite))
     except RosamtaError as err:
         print(f"error: {err}", file=sys.stderr)
-        out.data["error"] = {"code": err.exit_code, "message": str(err)}
+        out.data["error"] = {"code": err.exit_code, "file": err.file, "message": str(err)}
         return out.finish(err.exit_code)
 
 

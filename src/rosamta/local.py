@@ -44,7 +44,7 @@ def load() -> LocalSettings:
         try:
             if not stat.S_ISREG(os.fstat(fd).st_mode):
                 raise RosamtaError(f"{paths.display(path)} is not a regular file; replace it with a file, "
-                                   "or set XDG_CONFIG_HOME to another folder")
+                                   "or set XDG_CONFIG_HOME to another folder", path)
             with open(fd, encoding="utf-8", closefd=False) as file:
                 text = file.read()
         finally:
@@ -54,11 +54,11 @@ def load() -> LocalSettings:
     except OSError as err:
         raise RosamtaError(f"cannot read {paths.display(path)} ({err.strerror or err}); make it readable and "
                            f"{paths.display(path.parent)} readable and searchable, "
-                           "or set XDG_CONFIG_HOME to another folder") from None
+                           "or set XDG_CONFIG_HOME to another folder", path) from None
     try:
         data = tomllib.loads(text)
     except tomllib.TOMLDecodeError as err:
-        raise ConfigError(f"{path}: {err}") from None
+        raise ConfigError(f"{path}: {err}", path) from None
     saved = data.get("host_id")
     return LocalSettings(saved or default_host_id(),
                          list(data.get("tags", [])), data.get("config_folder"), bool(saved))
@@ -79,4 +79,5 @@ def save(settings: LocalSettings) -> None:
         path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     except OSError as err:
         raise RosamtaError(f"cannot write {paths.display(path)} ({err.strerror or err}); make "
-                           f"{paths.display(path.parent)} writable, or set XDG_CONFIG_HOME to a writable folder") from None
+                           f"{paths.display(path.parent)} writable, or set XDG_CONFIG_HOME to a writable folder",
+                           path) from None

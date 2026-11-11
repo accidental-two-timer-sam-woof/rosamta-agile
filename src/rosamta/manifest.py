@@ -27,19 +27,19 @@ class Output:
 def load_manifest(config: Path) -> list[Output]:
     path = config / "manifest.toml"
     if not path.is_file():
-        raise ConfigError(f"{path}: manifest not found")
+        raise ConfigError(f"{path}: manifest not found", path)
     try:
         data = tomllib.loads(path.read_text(encoding="utf-8"))
     except tomllib.TOMLDecodeError as err:
-        raise ConfigError(f"{path}: {err}") from None
+        raise ConfigError(f"{path}: {err}", path) from None
     outputs = []
     seen = set()
     for index, entry in enumerate(data.get("output", []), start=1):
         missing = [k for k in ("name", "template", "target") if k not in entry]
         if missing:
-            raise ConfigError(f"{path}: output {index} is missing {', '.join(missing)}")
+            raise ConfigError(f"{path}: output {index} is missing {', '.join(missing)}", path)
         if entry["name"] in seen:
-            raise ConfigError(f"{path}: output name {entry['name']} is used twice")
+            raise ConfigError(f"{path}: output name {entry['name']} is used twice", path)
         seen.add(entry["name"])
         target = entry["target"]
         if isinstance(target, str):
@@ -47,16 +47,16 @@ def load_manifest(config: Path) -> list[Output]:
         elif isinstance(target, dict):
             unknown = set(target) - set(OS_NAMES)
             if unknown:
-                raise ConfigError(f"{path}: output {entry['name']} has unknown OS {', '.join(sorted(unknown))}")
+                raise ConfigError(f"{path}: output {entry['name']} has unknown OS {', '.join(sorted(unknown))}", path)
             targets = dict(target)
         else:
-            raise ConfigError(f"{path}: output {entry['name']} target must be a path or a table per OS")
+            raise ConfigError(f"{path}: output {entry['name']} target must be a path or a table per OS", path)
         outputs.append(Output(entry["name"], entry["template"], targets,
                               bool(entry.get("take_over", False)), list(entry.get("requires", []))))
     return outputs
 
 
-def validate(outputs: list[Output], os_name: str) -> None:
+def validate(outputs: list[Output], os_name: str, path: Path) -> None:
     """Reject targets outside home, targets on rosamta's own files, and two outputs writing the same file (S06)."""
     owners: dict[Path, str] = {}
     own_files = {local.settings_file().resolve(), StateRecord.file().resolve()}
@@ -65,10 +65,11 @@ def validate(outputs: list[Output], os_name: str) -> None:
         if target is None:
             continue
         if not paths.is_inside_home(target):
-            raise ConfigError(f"output {output.name}: target {target} is outside the home directory")
+            raise ConfigError(f"output {output.name}: target {target} is outside the home directory", path)
         key = target.resolve()
         if key in own_files:
-            raise ConfigError(f"output {output.name}: target {paths.display(target)} is one of rosamta's own files")
+            raise ConfigError(f"output {output.name}: target {paths.display(target)} is one of rosamta's own files",
+                              path)
         if key in owners:
-            raise ConfigError(f"outputs {owners[key]} and {output.name} both write {paths.display(target)}")
+            raise ConfigError(f"outputs {owners[key]} and {output.name} both write {paths.display(target)}", path)
         owners[key] = output.name

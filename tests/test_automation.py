@@ -104,6 +104,22 @@ class AutomationTest(RosamtaCase):
         self.assertEqual(data["error"]["code"], 3)
         self.assertIn("theme.toml", data["error"]["message"])
 
+    @unittest.skipIf(os.name == "nt" or os.geteuid() == 0, "needs POSIX permissions and a non-root user")
+    def test_unreadable_settings_is_a_json_error(self):
+        folder = self.home / ".config/rosamta"
+        folder.mkdir(parents=True)
+        settings = folder / "local.toml"
+        settings.write_text('host_id = "test-host"\ntags = []\n')
+        for name, target, mode, restore in (("file", settings, 0o000, 0o600), ("folder", folder, 0o600, 0o700)):
+            with self.subTest(name):
+                target.chmod(mode)
+                try:
+                    code, out, _ = self.run_cli("--json", "preview")
+                finally:
+                    target.chmod(restore)
+                self.assertEqual(code, 1)
+                self.assertIn("cannot read ~/.config/rosamta/local.toml", json.loads(out)["error"]["message"])
+
     def test_errors_go_to_stderr_results_to_stdout(self):
         self.write("templates/alacritty.tmpl", "x={{ font.weight }}\n")
         code, out, err = self.run_cli("render", "alacritty")

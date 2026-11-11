@@ -39,13 +39,31 @@ outputs = ["alacritty"]
         return {item["output"] for item in json.loads(out)["items"]}
 
     def test_first_apply_saves_the_host_id(self):
-        with mock.patch("socket.gethostname", return_value="my-laptop.local"):
+        with mock.patch("socket.gethostname", return_value="work-laptop.local"):
             code, out, _ = self.run_cli("apply")
         self.assertEqual(code, 0)
-        self.assertIn("Host ID is my-laptop", out)
-        with mock.patch("socket.gethostname", return_value="my-laptop-2.local"):
+        self.assertIn("Host ID is work-laptop", out)
+        with mock.patch("socket.gethostname", return_value="work-laptop-2.local"):
+            code, out, _ = self.run_cli("apply")
+        self.assertEqual(code, 0)
+        self.assertNotIn("removed", out)
+        self.assertTrue(self.target(".config/rosamta/shellrc.zsh").is_file())
+        self.assertIn('host_id = "work-laptop"', (self.home / ".config/rosamta/local.toml").read_text())
+
+    def test_apply_saves_a_missing_host_id_and_keeps_tags(self):
+        path = self.home / ".config/rosamta/local.toml"
+        path.parent.mkdir(parents=True)
+        path.write_text('tags = ["gui"]\n')
+        with mock.patch("socket.gethostname", return_value="work-laptop.local"):
             self.run_cli("apply")
-        self.assertIn('host_id = "my-laptop"', (self.home / ".config/rosamta/local.toml").read_text())
+        self.assertIn('host_id = "work-laptop"', path.read_text())
+        self.assertIn('tags = ["gui"]', path.read_text())
+
+    def test_apply_saves_the_host_id_it_planned_with(self):
+        names = iter(["work-laptop.local"])
+        with mock.patch("socket.gethostname", side_effect=lambda: next(names, "renamed.local")):
+            self.run_cli("apply")
+        self.assertIn('host_id = "work-laptop"', (self.home / ".config/rosamta/local.toml").read_text())
 
     def test_preview_does_not_save_the_host_id(self):
         self.run_cli("preview")

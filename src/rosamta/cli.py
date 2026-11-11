@@ -103,11 +103,10 @@ def cmd_apply(config: Path, out: Reporter, overwrite: list[str]) -> int:
         out.data["error"] = {"code": EXIT_FAILED, "message": "preflight failed; nothing was written",
                              "problems": problems}
         return EXIT_FAILED
-    if not local.settings_file().is_file():
-        # The first write fixes the Host ID, so a later hostname change cannot pick other profiles (S07).
-        settings = local.load()
-        local.save(settings)
-        out.line(f"this machine's Host ID is {settings.host_id} (saved in {paths.display(local.settings_file())})")
+    if not plan.settings.host_id_saved:
+        # Save the Host ID the plan used, so a later hostname change cannot pick other profiles (S07).
+        local.save(plan.settings)
+        out.line(f"this machine's Host ID is {plan.settings.host_id} (saved in {paths.display(local.settings_file())})")
     for note in applier.apply(plan):
         out.line(note)
     out.data["items"] = [_item(c) for c in plan.changes]
@@ -122,7 +121,7 @@ def cmd_init(folder: Path, tags: list[str], out: Reporter) -> int:
     if not (folder / "manifest.toml").is_file():
         raise ConfigError(f"{folder}: not a rosamta config folder (no manifest.toml)")
     settings = local.load()
-    first_time = not local.settings_file().is_file()
+    first_time = not settings.host_id_saved
     settings.config_folder = str(folder)
     settings.tags = sorted(set(settings.tags) | set(tags))
     local.save(settings)

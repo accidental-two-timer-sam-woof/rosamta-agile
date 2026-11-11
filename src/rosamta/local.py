@@ -21,6 +21,7 @@ class LocalSettings:
     host_id: str
     tags: list[str] = field(default_factory=list)
     config_folder: str | None = None
+    host_id_saved: bool = False
 
 
 def settings_file() -> Path:
@@ -41,8 +42,9 @@ def load() -> LocalSettings:
         data = tomllib.loads(path.read_text(encoding="utf-8"))
     except tomllib.TOMLDecodeError as err:
         raise ConfigError(f"{path}: {err}") from None
-    return LocalSettings(data.get("host_id") or default_host_id(),
-                         list(data.get("tags", [])), data.get("config_folder"))
+    saved = data.get("host_id")
+    return LocalSettings(saved or default_host_id(),
+                         list(data.get("tags", [])), data.get("config_folder"), bool(saved))
 
 
 def _quote(text: str) -> str:

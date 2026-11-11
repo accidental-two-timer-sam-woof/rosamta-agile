@@ -9,7 +9,7 @@ flowchart TD
   valid -- No --> exit3([Report problem, exit 3])
   valid -- Yes --> plan[Build plan for this machine]
   plan --> pre{Preflight passes?}
-  pre -- No --> stop([Report problem, write nothing])
+  pre -- No --> stop([Report problem, write nothing, exit 1])
   pre -- Yes --> next{Next planned change?}
   next -- Drifted --> keep[Keep user's file, mark skipped] --> next
   next -- Existing file not written by rosamta --> allowed{Take-over allowed?}
@@ -25,6 +25,6 @@ flowchart TD
   skipped -- No --> exit0([Summary, exit 0])
 ```
 
-## Open question
+## Decision
 
-A failed preflight writes nothing, but S20 does not say which exit code it returns. To be decided by the PO.
+A failed preflight writes nothing and exits with code 1. This was an open question from drawing this diagram, because S20 gave no code for it. Decided by Stanley (PO) at the start of Sprint 2 (2026-11-11). See `docs/decisions.md`.

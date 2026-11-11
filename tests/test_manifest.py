@@ -30,6 +30,19 @@ class ManifestTest(RosamtaCase):
         self.assertEqual(code, 3)
         self.assertIn("outside the home directory", err)
 
+    def assert_own_file_is_rejected(self, own_file):
+        self.edit("manifest.toml", 'target = "~/.config/rosamta/shellrc.bash"', f'target = "~/{own_file}"')
+        code, _, err = self.run_cli("apply")
+        self.assertEqual(code, 3)
+        self.assertIn("one of rosamta's own files", err)
+        self.assertFalse(self.target(own_file).exists())
+
+    def test_target_on_the_local_settings_is_rejected(self):
+        self.assert_own_file_is_rejected(".config/rosamta/local.toml")
+
+    def test_target_on_the_state_record_is_rejected(self):
+        self.assert_own_file_is_rejected(".local/state/rosamta/state.json")
+
     def test_two_outputs_with_the_same_target_are_rejected(self):
         self.write("manifest.toml", '[[output]]\nname = "a"\ntemplate = "bash"\ntarget = "~/same"\n'
                    '[[output]]\nname = "b"\ntemplate = "zsh"\ntarget = "~/same"\n')

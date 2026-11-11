@@ -4,8 +4,9 @@ import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from rosamta import paths
+from rosamta import local, paths
 from rosamta.errors import ConfigError
+from rosamta.state import StateRecord
 
 OS_NAMES = ("macos", "linux", "windows")
 
@@ -56,8 +57,9 @@ def load_manifest(config: Path) -> list[Output]:
 
 
 def validate(outputs: list[Output], os_name: str) -> None:
-    """Reject targets outside home and two outputs writing the same file (S06)."""
+    """Reject targets outside home, targets on rosamta's own files, and two outputs writing the same file (S06)."""
     owners: dict[Path, str] = {}
+    own_files = {local.settings_file().resolve(), StateRecord.file().resolve()}
     for output in outputs:
         target = output.target_for(os_name)
         if target is None:
@@ -65,6 +67,8 @@ def validate(outputs: list[Output], os_name: str) -> None:
         if not paths.is_inside_home(target):
             raise ConfigError(f"output {output.name}: target {target} is outside the home directory")
         key = target.resolve()
+        if key in own_files:
+            raise ConfigError(f"output {output.name}: target {paths.display(target)} is one of rosamta's own files")
         if key in owners:
             raise ConfigError(f"outputs {owners[key]} and {output.name} both write {paths.display(target)}")
         owners[key] = output.name

@@ -18,7 +18,7 @@ Settings such as colors, fonts, shell variables and aliases are copied into the 
 - One module generates the config files of several programs
 - Built-in modules and templates, with per-template overrides
 - A manifest that declares every output and its target path per platform
-- Profiles that enable outputs by operating system, hostname or tag
+- Profiles that enable outputs by operating system, Host ID or tag (a fixed name for each machine, chosen once during init; see `docs/decisions.md`)
 - Preview and preflight checks before anything is written
 - Apply with automatic rollback on error
 - Drift detection: user edits to outputs are kept by default

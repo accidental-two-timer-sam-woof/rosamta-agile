@@ -18,14 +18,14 @@ The code in `src/rosamta`, the tests in `tests/` and the CI workflow, as committ
 | Decision | Why it matters | PO decision |
 | --- | --- | --- |
 | A failed preflight exits with code 1 | S20 did not define this (the open question from the activity diagram) | Accepted by Stanley (2026-11-11). S20 (#26) and the activity diagram updated |
-| Module, manifest and profile files are TOML | No story fixed a format; TOML needs no extra library | (fill in) |
+| Module, manifest and profile files are TOML | No story fixed a format; TOML needs no extra library | Accepted by Stanley (2026-11-12) |
 | The Host ID defaults to the hostname the first time, then stays fixed in local settings | Follows the S07 change request | Accepted by Stanley (2026-11-11). S18 (#24) updated to say Host ID |
-| An old output kept because of hand edits also gives exit code 2 | S15 and S20 did not say | (fill in) |
-| Python instead of Rust | Fastest to build for the demo; the AI-agent team uses Rust | (fill in) |
+| An old output kept because of hand edits also gives exit code 2 | S15 and S20 did not say | Accepted by Stanley (2026-11-12) |
+| Python instead of Rust | Fastest to build for the demo; the AI-agent team uses Rust | Accepted by Stanley (2026-11-12) |
 
 ## Not done
 
-- S10 checks missing programs but not missing fonts (font detection differs on every OS)
+- S10 checks missing programs but not missing fonts (font detection differs on every OS). The PO moved the font check to a backlog story, S24 (#39)
 - Windows paths are supported in the manifest but not tested
 
 ## Where the AI was wrong

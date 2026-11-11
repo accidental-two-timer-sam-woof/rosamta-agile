@@ -6,6 +6,7 @@ import json
 import os
 import subprocess
 import sys
+import unittest
 from pathlib import Path
 from unittest import mock
 
@@ -58,6 +59,21 @@ class InitTest(RosamtaCase):
         self.assertIn(str(blocked), err)
         self.assertFalse(self.target(".config/rosamta/shellrc.bash").exists())
         self.assertFalse(self.target(".local/state/rosamta").exists())
+
+    @unittest.skipIf(os.name == "nt" or os.geteuid() == 0, "needs POSIX permissions and a non-root user")
+    def test_unwritable_settings_folder_is_a_short_error(self):
+        folder = self.home / ".config/rosamta"
+        folder.mkdir(parents=True)
+        folder.chmod(0o500)
+        self.addCleanup(folder.chmod, 0o700)
+        self.edit("manifest.toml", "~/.config/rosamta/shellrc", "~/rosamta-shellrc")
+        for name, run in (("init", self.init), ("apply", lambda: self.run_cli("apply"))):
+            with self.subTest(name):
+                code, _, err = run()
+                self.assertEqual(code, 1)
+                self.assertIn("cannot write ~/.config/rosamta/local.toml", err)
+                self.assertIn("writable", err)
+                self.assertEqual([p for p in self.home.rglob("*") if p.is_file()], [])
 
     def test_init_rejects_a_folder_without_manifest(self):
         (self.config / "manifest.toml").unlink()

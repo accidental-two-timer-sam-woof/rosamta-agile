@@ -1,3 +1,16 @@
+<div align="center">
+
+<img width="2000" src=".github/assets/banner.png" alt="rosamta" />
+
+<br>
+
+[![CI](https://img.shields.io/github/actions/workflow/status/accidental-two-timer-sam-woof/rosamta-agile/ci.yml?branch=main&style=for-the-badge&label=CI)](https://github.com/accidental-two-timer-sam-woof/rosamta-agile/actions/workflows/ci.yml)
+[![Version](https://img.shields.io/badge/Version-v0.1.0-00BB00?style=for-the-badge)](pyproject.toml)
+[![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)](pyproject.toml)
+[![Board](https://img.shields.io/badge/Board-GitHub%20Projects-6E40C9?style=for-the-badge&logo=github&logoColor=white)](https://github.com/orgs/accidental-two-timer-sam-woof/projects/2)
+
+</div>
+
 # rosamta (Agile + AI)
 
 `rosamta` is a cross-platform dotfile manager. Settings shared by many programs (colors, fonts, shell environment) live in modules, and one module generates the config files for every program that uses it.

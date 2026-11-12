@@ -172,10 +172,24 @@ class AutomationTest(RosamtaCase):
         self.assertIn("required: key", err)
 
     def test_json_option_is_not_abbreviated(self):
-        code, out, err = self.run_main("--js", "render", "alacritty")
-        self.assertEqual(code, 3)
-        self.assertEqual(out, "")
-        self.assertIn("--js", err)
+        for args in (["--js", "render", "alacritty"], ["render", "alacritty", "--js"]):
+            with self.subTest(args=args):
+                code, out, err = self.run_main("--config", str(self.config), *args)
+                self.assertEqual(code, 3)
+                self.assertEqual(out, "")
+                self.assertIn("--js", err)
+
+    def test_json_after_the_command_as_written_in_s21(self):
+        code, out, _ = self.run_cli("apply", "--json")
+        data = json.loads(out)
+        self.assertEqual(code, 0)
+        self.assertEqual(data["exit_code"], 0)
+        self.assertTrue(data["items"])
+        self.assertTrue(all("path" in i and "action" in i for i in data["items"]))
+
+    def test_json_before_the_command_is_not_reset_by_the_command(self):
+        code, out, _ = self.run_cli("--json", "preview")
+        self.assertEqual(json.loads(out)["exit_code"], code)
 
     def test_json_after_double_dash_is_a_value_not_the_option(self):
         code, out, _ = self.run_main("--config", str(self.config), "get", "--", "--json")

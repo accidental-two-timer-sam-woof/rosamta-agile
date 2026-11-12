@@ -81,3 +81,49 @@ Summarized; the conversation was in Chinese.
 ### Time saved or lost
 
 (Jonas to fill in)
+
+## SamWang: S22 actionable errors (#52)
+
+- Date: 2026-11-12
+- Who: SamWang
+- Tool and model: Claude Code (Claude Opus 5.5); review by Codex CLI and CodeRabbit
+- Purpose: check S22 (#28) against the code: every error should say what failed, where, and what to change
+
+### Prompt
+
+Summarized; the conversation was in Chinese.
+
+1. Go through the error paths of every command and fix the errors that crash with a traceback or give no hint. Hold back the `get` and `render` messages until #48 merges, because #48 changes the same part of `cli.py`.
+2. Run a Codex review and fix what it finds until it finds nothing, then open the PR and fix what CodeRabbit finds. CI must pass.
+3. Fix the points in Jonas's review.
+
+### AI output
+
+- An audit script that triggered each error path: unreadable, non-UTF-8 and FIFO config files, a damaged `state.json`, unreadable outputs, and unsearchable folders. It listed the paths that crashed with a traceback or had no hint.
+- The fixes in #52:
+  - one shared reader in `paths.py`
+  - a preflight check for the state record
+  - hints for the config, `query`, `get` and `render` errors
+  - a test for each case, each checked to fail on `main`
+
+### Accepted and rejected
+
+| Item | Decision | Reason | Approved by |
+| --- | --- | --- | --- |
+| One shared reader that opens without blocking and rejects anything that is not a regular file | Accepted | FIFO, permission and encoding errors are handled in one place, and a FIFO can no longer hang rosamta (S19) | SamWang |
+| Preflight checks that the state record can be written | Accepted after a change | The first version also required a writable state folder when `state.json` already existed. Codex found that this stopped `apply` for a read-only folder with a writable `state.json`. Now only a new `state.json` needs a writable folder | SamWang |
+| An old output that rosamta cannot read is kept and reported, not removed | Accepted | rosamta cannot tell whether it was edited, so it treats it like an edited file | SamWang |
+| `get` and `render` hints in a separate commit after #48 | Accepted | Avoided a conflict with #48 | SamWang |
+| Jonas's review: the modules folder case, and `Refs #28` instead of `Closes #28` | Accepted | Both were right. The same check found that `init` had the problem too, so it was fixed in the same commit | SamWang |
+
+### Where the AI was wrong
+
+- The audit missed the modules folder: `Path.glob` skips a folder it cannot list without raising, so a locked folder looked empty. Jonas found it in review. Fixing it showed the same problem in `init`'s `is_file()` check.
+- The first state record check blocked `apply` in a case that worked before. Codex found it.
+- The audit script built one template path wrong (`templates/bash` instead of `templates/bash.tmpl`), so that case first looked fine.
+- Twice, a check that a new test fails on `main` ran against the fixed code by mistake, so it proved nothing. Both checks were redone.
+- The PR used `Closes #28` from the template. The Sprint 2 plan says story PRs use `Refs #n`, so that the PO closes the story after the review. Jonas pointed this out.
+
+### Time saved or lost
+
+(SamWang to fill in)

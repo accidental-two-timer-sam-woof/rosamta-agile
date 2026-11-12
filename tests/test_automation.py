@@ -346,6 +346,12 @@ class ActionableErrorTest(RosamtaCase):
              "create it with one .toml file per module"),
             ("no manifest", lambda: (self.config / "manifest.toml").unlink(), ("preview",),
              "pass --config <folder>, or run rosamta init <folder>"),
+            ("get, missing key", lambda: None, ("get", "theme.nope.deeper"),
+             "key not found: theme.nope; set it in modules/theme.toml"),
+            ("get, missing module", lambda: None, ("get", "nope.x"),
+             "key not found: nope.x; there is no module nope (modules: font, shellrc, theme)"),
+            ("render, unknown output", lambda: None, ("render", "nope"),
+             "output nope: not in the manifest; outputs: bash, zsh, fish, alacritty"),
         )
         for name, change, args, hint in cases:
             with self.subTest(name):

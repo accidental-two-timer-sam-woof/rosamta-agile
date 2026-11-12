@@ -122,7 +122,7 @@ def cmd_init(folder: Path, tags: list[str], out: Reporter) -> int:
     try:
         # Open it rather than ask is_file(): that hides a folder rosamta cannot search (S22).
         paths.read_bytes(folder / "manifest.toml")
-    except FileNotFoundError:
+    except (FileNotFoundError, paths.NotAFolderError):
         raise ConfigError(f"{folder}: not a rosamta config folder (no manifest.toml)", folder / "manifest.toml") from None
     settings = local.load()
     first_time = not settings.host_id_saved

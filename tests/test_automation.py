@@ -258,6 +258,34 @@ class ActionableErrorTest(RosamtaCase):
         self.assertEqual(out, "")
         self.assertIn(f"cannot read {folder / 'bash.tmpl'}", err)
 
+    @POSIX_USER
+    def test_unreadable_modules_folder_is_an_error_not_an_empty_folder(self):
+        folder = self.config / "modules"
+        self.addCleanup(folder.chmod, 0o700)
+        # 000 and 300 cannot be listed; 600 can be listed, but its files cannot be opened.
+        for mode in (0o000, 0o300, 0o600):
+            for args in (("render", "bash"), ("get", "theme.colors.background")):
+                with self.subTest(mode=oct(mode), args=args):
+                    folder.chmod(mode)
+                    code, out, err = self.run_cli(*args)
+                    self.assertEqual(code, 1)
+                    self.assertEqual(out, "")
+                    self.assertIn(f"cannot read {folder}", err)
+                    self.assertIn("readable and searchable", err)
+
+    @POSIX_USER
+    def test_init_names_a_config_folder_it_cannot_read(self):
+        self.config.chmod(0o000)
+        self.addCleanup(self.config.chmod, 0o700)
+        code, _, err = self.run_cli("init", str(self.config))
+        self.assertEqual(code, 1)
+        self.assertIn(f"cannot read {self.config.resolve() / 'manifest.toml'}", err)
+
+    def test_init_on_a_file_is_not_a_config_folder(self):
+        code, _, err = self.run_cli("init", str(self.config / "manifest.toml"))
+        self.assertEqual(code, 3)
+        self.assertIn("not a rosamta config folder (no manifest.toml)", err)
+
     @unittest.skipIf(not hasattr(os, "mkfifo"), "needs named pipes")
     def test_config_files_that_are_not_regular_files_do_not_hang(self):
         for relative in ("manifest.toml", "templates/bash.tmpl"):

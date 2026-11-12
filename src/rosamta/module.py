@@ -1,5 +1,6 @@
 """Modules: shared settings, one TOML file per module in `modules/` (S01)."""
 
+import fnmatch
 import tomllib
 from pathlib import Path
 
@@ -9,10 +10,14 @@ from rosamta.errors import ConfigError
 
 def load_modules(config: Path) -> dict[str, dict]:
     folder = config / "modules"
-    if not folder.is_dir():
-        raise ConfigError(f"{folder}: modules folder not found; create it with one .toml file per module", folder)
+    try:
+        entries = paths.list_folder(folder)
+    except (FileNotFoundError, NotADirectoryError):
+        raise ConfigError(f"{folder}: modules folder not found; create it with one .toml file per module", folder) from None
     modules = {}
-    for path in sorted(folder.glob("*.toml")):
+    for path in entries:
+        if not fnmatch.fnmatch(path.name, "*.toml"):
+            continue
         try:
             modules[path.stem] = tomllib.loads(paths.read_text(path))
         except tomllib.TOMLDecodeError as err:

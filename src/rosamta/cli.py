@@ -119,8 +119,11 @@ def cmd_apply(config: Path, out: Reporter, overwrite: list[str]) -> int:
 
 def cmd_init(folder: Path, tags: list[str], out: Reporter) -> int:
     folder = folder.resolve()
-    if not (folder / "manifest.toml").is_file():
-        raise ConfigError(f"{folder}: not a rosamta config folder (no manifest.toml)", folder / "manifest.toml")
+    try:
+        # Open it rather than ask is_file(): that hides a folder rosamta cannot search (S22).
+        paths.read_bytes(folder / "manifest.toml")
+    except FileNotFoundError:
+        raise ConfigError(f"{folder}: not a rosamta config folder (no manifest.toml)", folder / "manifest.toml") from None
     settings = local.load()
     first_time = not settings.host_id_saved
     settings.config_folder = str(folder)

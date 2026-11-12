@@ -1,5 +1,6 @@
 """S13 Drift, S14 Overwrite a drifted file, S15 Clean up, S16/S17 Query."""
 
+import re
 from pathlib import Path
 
 from helpers import RosamtaCase
@@ -46,18 +47,21 @@ class CleanupTest(RosamtaCase):
         self.edit("profiles.toml", 'outputs = ["bash", "zsh"]', 'outputs = ["bash"]')
 
     def test_unchanged_old_output_is_removed_and_previewed(self):
+        shown = f"~/{Path('.config/rosamta/shellrc.zsh')}"
         _, out, _ = self.run_cli("preview")
-        self.assertIn("will remove", out)
+        self.assertIn(f"will remove {shown}", out)
+        self.assertTrue(self.zsh.exists())
         code, out, _ = self.run_cli("apply")
         self.assertEqual(code, 0)
         self.assertFalse(self.zsh.exists())
-        self.assertIn("removed", out)
+        self.assertRegex(out, rf"removed\s.*{re.escape(shown)}")
 
     def test_edited_old_output_is_kept(self):
         self.zsh.write_text("# mine\n")
         code, out, _ = self.run_cli("apply")
-        self.assertTrue(self.zsh.exists())
-        self.assertIn("kept", out)
+        self.assertEqual(code, 2)
+        self.assertEqual(self.zsh.read_text(), "# mine\n")
+        self.assertRegex(out, r"kept\s.*edited by hand")
 
     def test_files_rosamta_never_wrote_are_untouched(self):
         other = self.target(".config/rosamta/notes.txt")

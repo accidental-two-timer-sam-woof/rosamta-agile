@@ -167,16 +167,22 @@ def main(argv: list[str] | None = None) -> int:
             return out.finish(cmd_init(args.folder, args.tag, out))
         config = _config_folder(args.config)
         if args.command == "get":
+            modules = load_modules(config)
             try:
-                out.line(str(get_value(load_modules(config), args.key)))
+                out.line(str(get_value(modules, args.key)))
             except KeyError as err:
-                raise ConfigError(f"key not found: {err.args[0]}",
-                                  config / "modules" / f"{args.key.split('.')[0]}.toml") from None
+                module = args.key.split(".")[0]
+                if module in modules:
+                    raise ConfigError(f"key not found: {err.args[0]}; set it in modules/{module}.toml",
+                                      config / "modules" / f"{module}.toml") from None
+                raise ConfigError(f"key not found: {args.key}; there is no module {module} "
+                                  f"(modules: {', '.join(sorted(modules)) or 'none'})", config / "modules") from None
             return out.finish(EXIT_OK)
         if args.command == "render":
             outputs = {o.name: o for o in manifest.load_manifest(config)}
             if args.output not in outputs:
-                raise ConfigError(f"output {args.output}: not in the manifest", config / "manifest.toml")
+                raise ConfigError(f"output {args.output}: not in the manifest; outputs: {', '.join(outputs) or 'none'}",
+                                  config / "manifest.toml")
             text = find_template(config, outputs[args.output].template).render(load_modules(config))
             if args.json:
                 out.data["content"] = text

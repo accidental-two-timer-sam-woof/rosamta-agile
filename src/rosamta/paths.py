@@ -52,24 +52,38 @@ def display(path: Path) -> str:
         return str(path)
 
 
+class NotAFolderError(RosamtaError):
+    """A file sits where a folder should be. Windows reports this as a missing file instead."""
+
+
 def _cannot_read(path: Path, err: OSError) -> RosamtaError:
     return RosamtaError(f"cannot read {display(path)} ({err.strerror or err}); "
                         "make it readable and its folder readable and searchable", path)
+
+
+def _not_a_folder(path: Path) -> NotAFolderError:
+    blocker = path.parent
+    try:
+        blocker = next(p for p in [*reversed(path.parents), path] if p.is_file())
+    except (StopIteration, OSError):
+        pass
+    return NotAFolderError(f"cannot read {display(path)}: {display(blocker)} is a file, not a folder; "
+                           "replace it with a folder", blocker)
 
 
 @contextlib.contextmanager
 def _open_regular_file(path: Path):
     """Open without blocking and check what was opened, so a FIFO can never hang rosamta (S19).
 
-    A missing file raises FileNotFoundError; every other problem becomes a rosamta error naming the file (S22).
+    A missing file raises FileNotFoundError, and a file where one of its folders should be NotAFolderError.
+    Every other problem becomes a rosamta error naming the file (S22).
     """
     try:
         fd = os.open(path, os.O_RDONLY | getattr(os, "O_NONBLOCK", 0) | getattr(os, "O_BINARY", 0))
     except FileNotFoundError:
         raise
-    except NotADirectoryError as err:
-        # A file where a folder should be: the file is not there, as Windows already reports it.
-        raise FileNotFoundError(err.errno, err.strerror, err.filename) from None
+    except NotADirectoryError:
+        raise _not_a_folder(path) from None
     except OSError as err:
         raise _cannot_read(path, err) from None
     try:
@@ -83,14 +97,16 @@ def _open_regular_file(path: Path):
 
 
 def list_folder(folder: Path) -> list[Path]:
-    """The folder's entries, sorted. A missing folder raises FileNotFoundError, a file in its place NotADirectoryError.
+    """The folder's entries, sorted. A missing folder raises FileNotFoundError, a file in its place NotAFolderError.
 
     Path.glob skips a folder it cannot list without a word, so a locked folder would look empty (S22).
     """
     try:
         return sorted(folder.iterdir())
-    except (FileNotFoundError, NotADirectoryError):
+    except FileNotFoundError:
         raise
+    except NotADirectoryError:
+        raise _not_a_folder(folder) from None
     except OSError as err:
         raise RosamtaError(f"cannot read {display(folder)} ({err.strerror or err}); "
                            "make it readable and searchable, and its parent folders searchable", folder) from None

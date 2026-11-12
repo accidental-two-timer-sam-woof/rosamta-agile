@@ -286,6 +286,40 @@ class ActionableErrorTest(RosamtaCase):
         self.assertEqual(code, 3)
         self.assertIn("not a rosamta config folder (no manifest.toml)", err)
 
+    @unittest.skipIf(os.name == "nt", "Windows reports a file in the path as a missing file")
+    def test_a_file_where_a_folder_should_be_is_named(self):
+        cases = (
+            ("templates", self.config / "templates", ("render", "bash"), str(self.config / "templates")),
+            ("modules", self.config / "modules", ("get", "theme.colors.background"), str(self.config / "modules")),
+            ("state folder", self.home / ".local/state/rosamta", ("preview",), "~/.local/state/rosamta"),
+        )
+        for name, blocker, args, shown in cases:
+            with self.subTest(name):
+                shutil.rmtree(self.config)
+                shutil.copytree(EXAMPLE, self.config)
+                shutil.rmtree(blocker, ignore_errors=True)
+                blocker.parent.mkdir(parents=True, exist_ok=True)
+                blocker.write_text("not a folder\n")
+                try:
+                    code, out, err = self.run_cli(*args)
+                finally:
+                    blocker.unlink()
+                self.assertEqual(code, 1)
+                self.assertEqual(out, "")
+                self.assertIn(f"{shown} is a file, not a folder; replace it with a folder", err)
+
+    def test_a_file_where_an_output_folder_should_be_stops_apply_in_preflight(self):
+        self.edit("manifest.toml", "~/.config/rosamta/shellrc.bash", "~/blocked/shellrc.bash")
+        blocker = self.home / "blocked"
+        blocker.write_text("not a folder\n")
+        code, _, _ = self.run_cli("preview")
+        self.assertEqual(code, 0)
+        code, _, err = self.run_cli("apply")
+        self.assertEqual(code, 1)
+        self.assertIn(f"bash: cannot write to {blocker}", err)
+        self.assertEqual(blocker.read_text(), "not a folder\n")
+        self.assertFalse((self.home / ".config/rosamta/shellrc.zsh").exists())
+
     @unittest.skipIf(not hasattr(os, "mkfifo"), "needs named pipes")
     def test_config_files_that_are_not_regular_files_do_not_hang(self):
         for relative in ("manifest.toml", "templates/bash.tmpl"):

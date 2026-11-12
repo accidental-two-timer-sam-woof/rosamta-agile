@@ -26,7 +26,7 @@ class Change:
     def old_content(self) -> str:
         try:
             return paths.read_bytes(self.path).decode("utf-8", errors="replace")
-        except FileNotFoundError:
+        except (FileNotFoundError, paths.NotAFolderError):
             return ""
 
 
@@ -69,8 +69,8 @@ def build_plan(config: Path, overwrite: list[str] | None = None) -> Plan:
                         enabled_by=selection.enabled[output.name])
         try:
             current = paths.read_bytes(target)
-        except FileNotFoundError:
-            current = None
+        except (FileNotFoundError, paths.NotAFolderError):
+            current = None   # a file in the way of its folder is reported by preflight
         if current is not None:
             if current == content.encode("utf-8"):
                 change.action = UNCHANGED
@@ -92,7 +92,7 @@ def build_plan(config: Path, overwrite: list[str] | None = None) -> Plan:
         path = Path(path_text)
         try:
             current = paths.read_bytes(path)
-        except FileNotFoundError:
+        except (FileNotFoundError, paths.NotAFolderError):
             continue
         except RosamtaError:
             changes.append(Change("(old output)", path, KEEP, "no longer enabled, but rosamta cannot read it, so it is left alone"))

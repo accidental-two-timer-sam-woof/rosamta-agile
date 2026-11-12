@@ -12,7 +12,7 @@ def load_modules(config: Path) -> dict[str, dict]:
     folder = config / "modules"
     try:
         entries = paths.list_folder(folder)
-    except (FileNotFoundError, NotADirectoryError):
+    except FileNotFoundError:
         raise ConfigError(f"{folder}: modules folder not found; create it with one .toml file per module", folder) from None
     modules = {}
     for path in entries:

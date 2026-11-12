@@ -27,15 +27,24 @@ class DriftTest(RosamtaCase):
         self.assertEqual(code, 0)
         self.assertNotIn("drift", out)
 
-    def test_overwrite_replaces_a_drifted_file(self):
+    def test_preview_shows_the_diff_of_a_drifted_file(self):
+        generated = self.zsh.read_text()
         self.zsh.write_text("# edited\n")
-        _, out, _ = self.run_cli("preview")
+        code, out, _ = self.run_cli("preview")
+        self.assertEqual(code, 0)
         self.assertIn("-# edited", out)
+        for line in generated.splitlines():
+            self.assertIn(f"+{line}", out)
+
+    def test_overwrite_replaces_a_drifted_file(self):
+        generated = self.zsh.read_text()
+        self.zsh.write_text("# edited\n")
         code, _, _ = self.run_cli("apply", "--overwrite", "zsh")
         self.assertEqual(code, 0)
-        self.assertNotIn("# edited", self.zsh.read_text())
+        self.assertEqual(self.zsh.read_text(), generated)
         code, out, _ = self.run_cli("apply")
         self.assertEqual(code, 0)
+        self.assertNotIn("drift", out)
 
 
 class CleanupTest(RosamtaCase):

@@ -67,6 +67,9 @@ def _open_regular_file(path: Path):
         fd = os.open(path, os.O_RDONLY | getattr(os, "O_NONBLOCK", 0) | getattr(os, "O_BINARY", 0))
     except FileNotFoundError:
         raise
+    except NotADirectoryError as err:
+        # A file where a folder should be: the file is not there, as Windows already reports it.
+        raise FileNotFoundError(err.errno, err.strerror, err.filename) from None
     except OSError as err:
         raise _cannot_read(path, err) from None
     try:
@@ -77,6 +80,20 @@ def _open_regular_file(path: Path):
         raise _cannot_read(path, err) from None
     finally:
         os.close(fd)
+
+
+def list_folder(folder: Path) -> list[Path]:
+    """The folder's entries, sorted. A missing folder raises FileNotFoundError, a file in its place NotADirectoryError.
+
+    Path.glob skips a folder it cannot list without a word, so a locked folder would look empty (S22).
+    """
+    try:
+        return sorted(folder.iterdir())
+    except (FileNotFoundError, NotADirectoryError):
+        raise
+    except OSError as err:
+        raise RosamtaError(f"cannot read {display(folder)} ({err.strerror or err}); "
+                           "make it readable and searchable, and its parent folders searchable", folder) from None
 
 
 def read_bytes(path: Path) -> bytes:

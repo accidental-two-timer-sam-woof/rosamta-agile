@@ -137,6 +137,10 @@ def cmd_init(folder: Path, tags: list[str], out: Reporter) -> int:
 class _Parser(argparse.ArgumentParser):
     """Turns a wrong command line into a rosamta error, so --json still prints one document (S21)."""
 
+    def __init__(self, *args, **kwargs):
+        # No abbreviations, in the commands too: "--js" must not silently mean "--json" (S21).
+        super().__init__(*args, allow_abbrev=False, **kwargs)
+
     def error(self, message: str):
         self.print_usage(sys.stderr)
         raise UsageError(f"{self.prog}: {message}")
@@ -144,8 +148,7 @@ class _Parser(argparse.ArgumentParser):
 
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
-    # No abbreviations: "--js" must not silently mean "--json" (S21).
-    parser = _Parser(prog="rosamta", description="One module, many dotfiles.", allow_abbrev=False)
+    parser = _Parser(prog="rosamta", description="One module, many dotfiles.")
     parser.add_argument("--config", type=Path, help="config folder (default: the one saved by init, else the current folder)")
     parser.add_argument("--json", action="store_true", help="print results as one JSON document (S21)")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -160,6 +163,11 @@ def main(argv: list[str] | None = None) -> int:
     init = commands.add_parser("init", help="set up this machine with a config folder, then apply")
     init.add_argument("folder", type=Path)
     init.add_argument("--tag", action="append", default=[], help="add a tag to this machine")
+    # S21 is written as "rosamta apply --json", so --json also works after the command.
+    # SUPPRESS keeps a command from resetting "rosamta --json apply" to False.
+    for sub in commands.choices.values():
+        sub.add_argument("--json", action="store_true", default=argparse.SUPPRESS,
+                         help="print results as one JSON document (S21)")
     # Before parsing, guess JSON mode the way the parser will: "--json" as an option, not after "--".
     options = argv[:argv.index("--")] if "--" in argv else argv
     out = Reporter("--json" in options)
